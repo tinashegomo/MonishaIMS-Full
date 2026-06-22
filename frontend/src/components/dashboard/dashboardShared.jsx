@@ -88,15 +88,15 @@ export function HeroStat({ label, value, sub, icon: Ic, color, accent, href }) {
 /* ── Small Stat Card ── */
 export function SmStat({ label, value, icon: Ic, color, accent, href }) {
   return (
-    <Link to={href} className="relative rounded-2xl border border-gray-200/60 bg-white p-18 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group overflow-hidden">
+    <Link to={href} className="relative rounded-2xl border border-gray-200/60 bg-white p-14 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group overflow-hidden">
       <div className="absolute top-0 left-0 h-1 w-full rounded-t-2xl" style={{ backgroundColor: accent }} />
-      <div className="flex items-center gap-12">
-        <div className={`flex h-36 w-36 shrink-0 items-center justify-center rounded-xl ${color} transition-transform duration-300 group-hover:scale-110`}>
-          <Ic className="h-18 w-18" />
+      <div className="flex items-center gap-10">
+        <div className={`flex h-32 w-32 shrink-0 items-center justify-center rounded-xl ${color} transition-transform duration-300 group-hover:scale-110`}>
+          <Ic className="h-16 w-16" />
         </div>
-        <div className="min-w-0">
-          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider truncate">{label}</p>
-          <p className="mt-4 text-2xl font-bold text-gray-900 leading-tight truncate">{value}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">{label}</p>
+          <p className="mt-4 text-lg sm:text-xl font-bold text-gray-900 leading-tight whitespace-nowrap">{value}</p>
         </div>
       </div>
     </Link>

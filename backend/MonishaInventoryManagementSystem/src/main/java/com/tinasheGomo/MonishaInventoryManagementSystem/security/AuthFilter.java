@@ -77,8 +77,7 @@ public class AuthFilter extends OncePerRequestFilter {
 
             /*
              STEP 5
-             Load user from database
-             using CustomUserDetailsService
+             Load user from database using CustomUserDetailsService
              */
 
             UserDetails userDetails =

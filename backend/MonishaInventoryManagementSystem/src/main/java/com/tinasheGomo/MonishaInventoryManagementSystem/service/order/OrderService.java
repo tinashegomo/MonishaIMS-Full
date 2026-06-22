@@ -1,6 +1,5 @@
 package com.tinasheGomo.MonishaInventoryManagementSystem.service.order;
 
-import com.tinasheGomo.MonishaInventoryManagementSystem.dto.order.request.OrderItemRequestDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.order.request.OrderRequestDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.order.response.OrderResponseDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.entity.customer.CustomerEntity;
@@ -20,8 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -90,14 +87,7 @@ public class OrderService {
         OrderEntity savedOrder = orderRepository.save(order);
 
         // Create each order item via OrderItemService
-        // each item handles its own inventory deduction and measurements
-        List<OrderItemEntity> items = new ArrayList<>();
-
-        for (OrderItemRequestDTO itemDTO : dto.getOrderItems()) {
-
-            OrderItemEntity item = orderItemService.createOrderItem(savedOrder, itemDTO);
-            items.add(item);
-        }
+        List<OrderItemEntity> items = orderItemService.addOrderItemsToOrder(savedOrder, dto.getOrderItems());
 
         savedOrder.setOrderItems(items);
 

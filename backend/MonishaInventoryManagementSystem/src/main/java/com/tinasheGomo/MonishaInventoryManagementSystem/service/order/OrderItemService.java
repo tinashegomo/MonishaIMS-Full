@@ -13,10 +13,13 @@ import com.tinasheGomo.MonishaInventoryManagementSystem.repository.warehouse.War
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.measurement.MeasurementService;
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.product.ProductSizeService;
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.warehouse.WarehouseBatchSizeService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -30,86 +33,87 @@ public class OrderItemService {
     private final ProductSizeService productSizeService;
     private final WarehouseBatchSizeService batchSizeService;
 
-    public OrderItemEntity createOrderItem(OrderEntity order, OrderItemRequestDTO dto) {
+    /**
+     * ADD ORDER ITEMS TO ORDER
+     * This is used when you want to add order items to an existing order.
+     * Handles product/batch/custom branching, stock deduction, and measurements.
+     */
+    @Transactional
+    public List<OrderItemEntity> addOrderItemsToOrder(OrderEntity order, List<OrderItemRequestDTO> dtos) {
 
-        // Maps only safe fields: quantity, size, customMade, measurementsTaken
-        // type, variant, color, unitPrice are intentionally ignored by the mapper
-        OrderItemEntity item = orderItemMapper.toEntity(dto);
+        List<OrderItemEntity> items = new ArrayList<>();
 
-        // Link this item to its parent order
-        // without this, order_id column will be NULL in the database
-        item.setOrder(order);
+        for (OrderItemRequestDTO dto : dtos) {
 
-        if (dto.getProductId() != null) {
+            // Maps only safe fields: quantity, size, customMade, measurementsTaken
+            // type, variant, color, unitPrice are intentionally ignored by the mapper
+            OrderItemEntity item = orderItemMapper.toEntity(dto);
 
-            // READY-MADE: sourced from product inventory
-            // frontend only sent productId — backend fills everything else
-            ProductEntity product = productRepository.findByProductId(dto.getProductId())
-                    .orElseThrow(() -> new NotFoundException("Product not found"));
+            // Link this item to its parent order
+            item.setOrder(order);
 
-            item.setProduct(product);
+            if (dto.getProductId() != null) {
 
-            // Copy inventory snapshot into order item
-            // protects order history if product details change later
-            item.setType(product.getType());
-            item.setVariant(product.getVariant());
-            item.setColor(product.getColor());
+                // READY-MADE: sourced from product inventory
+                ProductEntity product = productRepository.findByProductId(dto.getProductId())
+                        .orElseThrow(() -> new NotFoundException("Product not found"));
 
-            // Price comes from product, not from frontend
-            // prevents cashier from manually changing the price
-            item.setUnitPrice(BigDecimal.valueOf(product.getProductPrice()));
+                item.setProduct(product);
 
-            // Deduct stock from the specific size requested
-            // this reduces available quantity in the warehouse
-            productSizeService.deductStock(product.getProductId(), dto.getSize(), dto.getQuantity());
+                // Copy inventory snapshot into order item
+                item.setType(product.getType());
+                item.setVariant(product.getVariant());
+                item.setColor(product.getColor());
 
-        } else if (dto.getBatchId() != null) {
+                // Price comes from product, not from frontend
+                item.setUnitPrice(BigDecimal.valueOf(product.getProductPrice()));
 
-            // READY-MADE: sourced from batch inventory
-            // frontend only sent batchId — backend fills everything else
-            WarehouseBatchEntity batch = batchRepository.findByBatchId(dto.getBatchId())
-                    .orElseThrow(() -> new NotFoundException("Batch not found"));
+                // Deduct stock from the specific size requested
+                productSizeService.deductStock(product.getProductId(), dto.getSize(), dto.getQuantity());
 
-            item.setBatch(batch);
+            } else if (dto.getBatchId() != null) {
 
-            // Copy inventory snapshot into order item
-            // same reason as product flow above
-            item.setType(batch.getType());
-            item.setVariant(batch.getVariant());
-            item.setColor(batch.getColor());
+                // READY-MADE: sourced from batch inventory
+                WarehouseBatchEntity batch = batchRepository.findByBatchId(dto.getBatchId())
+                        .orElseThrow(() -> new NotFoundException("Batch not found"));
 
-            // Price comes from batch, not from frontend
-            item.setUnitPrice(BigDecimal.valueOf(batch.getBatchPrice()));
+                item.setBatch(batch);
 
-            // Deduct stock from the specific size requested
-            batchSizeService.deductStock(batch.getBatchId(), dto.getSize(), dto.getQuantity());
+                // Copy inventory snapshot into order item
+                item.setType(batch.getType());
+                item.setVariant(batch.getVariant());
+                item.setColor(batch.getColor());
 
-        } else {
+                // Price comes from batch, not from frontend
+                item.setUnitPrice(BigDecimal.valueOf(batch.getBatchPrice()));
 
-            // CUSTOM-MADE: no inventory exists yet
-            // frontend sends type, variant, color, unitPrice manually
-            // because this item will be produced later in tailoring
-            item.setType(dto.getType());
-            item.setVariant(dto.getVariant());
-            item.setColor(dto.getColor());
-            item.setUnitPrice(dto.getUnitPrice());
+                // Deduct stock from the specific size requested
+                batchSizeService.deductStock(batch.getBatchId(), dto.getSize(), dto.getQuantity());
+
+            } else {
+
+                // CUSTOM-MADE: no inventory exists yet
+                item.setType(dto.getType());
+                item.setVariant(dto.getVariant());
+                item.setColor(dto.getColor());
+                item.setUnitPrice(dto.getUnitPrice());
+            }
+
+            // Calculate total price for this line item
+            BigDecimal totalPrice = item.getUnitPrice().multiply(BigDecimal.valueOf(dto.getQuantity()));
+            item.setTotalPrice(totalPrice);
+
+            // Save item — measurements require an existing orderItemId in the database
+            OrderItemEntity savedItem = orderItemRepository.save(item);
+
+            // Save measurements if provided
+            if (dto.getMeasurements() != null && !dto.getMeasurements().isEmpty()) {
+                measurementService.createMeasurements(savedItem, dto.getMeasurements());
+            }
+
+            items.add(savedItem);
         }
 
-        // Calculate total price for this line item
-        // formula: unitPrice x quantity
-        BigDecimal totalPrice = item.getUnitPrice().multiply(BigDecimal.valueOf(dto.getQuantity()));
-        item.setTotalPrice(totalPrice);
-
-        // Save item before measurements
-        // measurements require an existing orderItemId in the database
-        OrderItemEntity savedItem = orderItemRepository.save(item);
-
-        // Save measurements if provided
-        // only custom-made orders will have measurements
-        if (dto.getMeasurements() != null && !dto.getMeasurements().isEmpty()) {
-            measurementService.createMeasurements(savedItem, dto.getMeasurements());
-        }
-
-        return savedItem;
+        return items;
     }
 }
