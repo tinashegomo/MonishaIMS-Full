@@ -3,7 +3,7 @@ import { getStoredToken, isTokenExpired, removeToken } from "../utils/tokenUtils
 
 
 const API = axios.create({
-    baseURL: "http://localhost:8080/api/monishaInventory"
+    baseURL: "https://monishainventorymanagementsystem-backend.onrender.com/api/monishaInventory"
 });
 
 // Before EVERY request is sent, this function runs.

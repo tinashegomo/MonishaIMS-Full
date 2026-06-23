@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Loader2, Package } from "lucide-react";
-import { useGetAllWarehouseBatches, useDeleteWarehouseBatch } from "@/hooks/InventoryHooks";
+import { useGetAllWarehouseBatches, useDeleteWarehouseBatch, useGetCurrentUser } from "@/hooks/InventoryHooks";
 import { WarehouseBatchList } from "@/components/warehouse/WarehouseBatchList";
 import ConfirmBatchDeleteModal from "@/components/warehouse/ConfirmBatchDeleteModal";
 
@@ -12,6 +12,7 @@ import ConfirmBatchDeleteModal from "@/components/warehouse/ConfirmBatchDeleteMo
  */
 export default function Warehouse() {
 
+  const { data: user } = useGetCurrentUser();
   const { data: batches, isLoading, isError, error } = useGetAllWarehouseBatches();
   const { mutate: deleteBatch, isPending: isDeleting } = useDeleteWarehouseBatch();
   const [selectedItem, setSelectedItem] = useState(null);
@@ -34,13 +35,15 @@ export default function Warehouse() {
             Manage inventory batches
           </p>
         </div>
-        <Link
-          to="/warehouse/create-batch"
-          className="inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-14 py-8 text-sm font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed press-scale transition-all duration-200"
-        >
-          <Plus className="h-16 w-16" />
-          Create Batch
-        </Link>
+        {user?.userRole !== "USER" && (
+          <Link
+            to="/warehouse/create-batch"
+            className="inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-14 py-8 text-sm font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed press-scale transition-all duration-200"
+          >
+            <Plus className="h-16 w-16" />
+            Create Batch
+          </Link>
+        )}
       </div>
 
       {isError && (

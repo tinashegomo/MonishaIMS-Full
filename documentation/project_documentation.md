@@ -4,86 +4,46 @@ Monisha Inventory Management System Documentation
 
 Introduction
 
-This project is a stock-controlled uniform shop management system designed for a clothing and uniform manufacturing business. The system manages warehouse inventory, school uniforms, product allocation, stock deduction, and future order processing.
+This project is a stock-controlled uniform shop management system designed for a clothing and uniform manufacturing business. The system manages warehouse inventory, school uniforms, product allocation, stock deduction, and custom tailoring workflows with measurements.
 
-The system is intended to replace the traditional notebook/book-based system currently used in the shop.
+The system replaces the traditional notebook/book-based manual system previously used in the shop with a secure, responsive, and robust digital platform.
 
-The application will use:
-
-React for the frontend
-
-Spring Boot for the backend
-
-MySQL for database storage
+The application uses:
+- React 19 for the frontend (Vite 8 build tool)
+- Spring Boot 3.5.14 for the backend (Java 21)
+- MySQL / H2 for database storage (stateless JWT authentication)
 
 2. Main Goal of the System
 
 The main purpose of the system is to:
-
-Manage warehouse stock properly
-
-Prevent invalid stock combinations
-
-Track uniform inventory by:
-
-type
-
-variant
-
-color
-
-size
-
-Allocate stock to products
-
-Support school-based uniforms
-
-Support general non-school items
-
-Deduct stock automatically
-
-Prevent overselling
-
-Prepare the system for future:
-
-customer orders
-
-measurements
-
-payments
-
-tailoring workflows
+- Manage warehouse stock properly from a central source of truth
+- Prevent invalid stock combinations (Type → Variant → Color → Size)
+- Track uniform inventory dynamically (reducing overselling and manual entry errors)
+- Allocate stock to sellable products smoothly
+- Support school-based uniforms and general non-school items
+- Deduct stock automatically upon product creation and order placement
+- Support full customer order flows, measurements, custom-made items, payments, and tailoring production statuses
 
 3. Problem Being Solved
 
-The current book system has several limitations:
+The manual book system had severe limitations:
+- Difficult to track stock accurately across sizes
+- Difficult to know remaining quantities in real-time
+- No automatic stock deduction or validations
+- No validation of available stock combinations (leads to invalid product specifications)
+- Human errors in bookkeeping, payments, and outstanding balances
+- Hard to search historical records or audit user actions
+- No relationship between warehouse stock, products, and customer orders
+- Difficult to manage custom tailoring requests and tailoring queues
 
-Difficult to track stock accurately
-
-Difficult to know remaining quantities
-
-No automatic deduction
-
-No filtering of available stock combinations
-
-Easy to make mistakes
-
-Hard to search historical records
-
-No relationship between warehouse stock and products
-
-Difficult to manage custom tailoring requests
-
-The digital system solves these problems by enforcing structured inventory relationships.
+The digital system solves these problems by enforcing structured inventory relationships and automated calculations.
 
 4. Core System Concept
 
 The warehouse is the source of truth.
-
 Everything in the system must originate from warehouse inventory.
 
 The system follows this hierarchy:
-
 Batch
 ↓
 Type
@@ -96,87 +56,61 @@ Size
 ↓
 Size Quantity
 
-Every product created must match an existing warehouse stock combination.
+Every product created must draw its characteristics and stock directly from an existing warehouse stock combination.
 
 5. System Architecture
 
 Frontend
 
 Technology:
-
-React
-
-React Router
-
-Axios
-
-React Hook Form
-
-Tailwind CSS
+- React 19
+- Vite 8
+- Axios (with centralized JWT request/response interceptors)
+- React Hook Form + Yup (schema-driven validation)
+- Tailwind CSS v4 (native CSS-based semantic theme tokens)
+- Recharts (analytical dashboard charts)
+- Lucide React (vector icons)
 
 Responsibilities:
+- Forms and validation feedback
+- Dynamic dropdown filtering (Type → Variant → Color → Batch)
+- Responsive display layouts
+- Dashboard reporting and real-time warnings
+- Audit trail display
 
-Forms
-
-Dropdown filtering
-
-Data display
-
-User interaction
-
-Validation feedback
+Layout & Navigation:
+- **Desktop (lg+):** Horizontal TopNav bar with branding, primary navigation links (Dashboard, Warehouse, Products, Orders, Tailoring), and a custom profile dropdown containing Profile, Users (Admin only), and Sign Out.
+- **Mobile (<lg):** Fixed BottomNav tab bar containing 5 quick-action icon links, plus a sliding "More" profile dropdown.
 
 Backend
 
 Technology:
-
-Spring Boot 3.5.14
-
-Java 21
-
-Maven
-
-Spring Web
-
-Spring Data JPA
-
-Validation
-
-Spring Security
-
-MySQL
-
-Lombok
+- Spring Boot 3.5.14
+- Java 21
+- Maven
+- Spring Web
+- Spring Data JPA + Hibernate
+- Jakarta Validation
+- Spring Security (stateless JWT authentication)
+- MapStruct (compile-time entity/DTO mapping)
+- Lombok
 
 Responsibilities:
-
-Business logic
-
-Validation
-
-Database operations
-
-Security
-
-Inventory deduction
-
-API exposure
+- Business logic validation
+- Database transactions (atomic rollbacks)
+- Inventory deduction algorithms
+- Role-based security (ADMIN, MANAGER, USER)
+- API endpoint controllers (verb-suffixed structure)
 
 Database
 
 Technology:
-
-MySQL
+- MySQL (or H2 for local test environments)
 
 Responsibilities:
-
-Persistent storage
-
-Inventory tracking
-
-Product management
-
-Relationship management
+- Persistent storage
+- Relational mapping (foreign keys, cascading deletes, orphan removals)
+- Audit fields (tracking `createdBy` per entry)
 
 6. Core Business Logic
 
@@ -185,31 +119,21 @@ Warehouse Is the Master Inventory
 Warehouse inventory represents the actual physical stock available in the business.
 
 Example:
-
 Batch Name: Shirts Batch 01
-
 Type: Shirt
-
 Variant:
-
 - Short Sleeve
 - Long Sleeve
-
 Color:
-
 - White
 - Yellow
 - Sky Blue
-
 Sizes:
-
 - 30
 - 32
 - 34
 - XL
-
 Size Quantities:
-
 - 30 = 100
 - 32 = 80
 - 34 = 50
@@ -220,494 +144,131 @@ This is the foundation of the entire system.
 
 Purpose
 
-The warehouse module stores all available inventory combinations.
+The warehouse module stores all available raw inventory batches.
 
 Warehouse Batch
 
-A warehouse batch is a stock group.
+A warehouse batch is a physical stock group.
+Example: Shirts Batch 01
 
-Example:
-
-Shirts Batch 01
-
-A batch may contain:
-
-multiple variants
-
-multiple colors
-
-multiple sizes
+A batch contains:
+- One main Category/Type (e.g. Shirt)
+- One Variant (e.g. Short Sleeve)
+- One Color (e.g. White)
+- Multiple sizes and their respective quantities
 
 Warehouse Breakdown Structure
 
 Each warehouse stock entry contains:
-
-Field
-
-Description
-
-Batch Name
-
-Group name
-
-Type
-
-Product category
-
-Variant
-
-Variation under type
-
-Color
-
-Product color
-
-Size
-
-Product size
-
-Size Quantity
-
-Quantity available
-
-Total Quantity
-
-Sum of all quantities
-
-Description
-
-Additional notes
+- **Batch Name:** Unique identifier name
+- **Type / Category:** Product category (e.g., Shirt, Blazer)
+- **Variant:** Style variation (e.g., Short Sleeve, Long Sleeve, Custom)
+- **Color:** Fabric color
+- **Size:** Individual sizes loaded
+- **Quantity:** Quantity of that size
+- **Total Quantity:** Calculated sum of all sizes (recalculated on stock deduction)
+- **Batch Price:** Cost price per unit
+- **Total Price:** Total batch value (Total Quantity × Batch Price)
+- **Created By:** Audit field tracking who logged the batch
+- **Description:** Optional notes
 
 8. School Module
 
 Purpose
 
-The school module stores schools associated with uniforms.
+The school module stores school names associated with school uniforms (e.g., Pamushana High School, Zimuto High School).
 
-Example:
-
-Zimuto High School
-
-Important Rule
-
+Important Rule:
 School is optional.
-
-This allows:
-
-school uniforms
-
-general shop items
-
-non-school products
+This allows the system to manage both school uniforms and general shop items (non-school products) seamlessly.
 
 Examples:
-
-White shirt → no school
-
-Pamushana blazer → linked to school
+- White shirt → no school (general)
+- Pamushana blazer → linked to school
 
 9. Product Module
 
 Purpose
 
-Products represent sellable or assignable stock.
+Products represent sellable items on the shop shelf.
+All products must draw their stock from raw warehouse batches.
 
-Products must originate from warehouse inventory.
+Product Creation Rules:
+The user cannot freely type type, variant, or color. Instead, they choose an existing warehouse batch, and those fields are copied over automatically to ensure data consistency.
 
-10. Product Creation Rules
+10. Dynamic Dependent Dropdown Logic
 
-The user cannot freely type:
+The product form utilizes dependent dropdown cascades:
+1. **Select Type:** Loads available batch types.
+2. **Select Variant:** Filters variants available for that type.
+3. **Select Color:** Filters colors available for that type + variant.
+4. **Select Batch:** Displays the specific batch matching these criteria.
+5. **Select Sizes:** The system displays the available quantities in the warehouse for each size and validates that the requested quantity is within stock limits.
 
-type
-
-variant
-
-color
-
-size
-
-Instead, the user selects values from warehouse inventory.
-
-11. Dynamic Dropdown Logic
-
-The frontend must implement dependent dropdowns.
-
-Step 1 — Select Type
-
-Example:
-
-Shirt
-
-The system loads only variants related to shirts.
-
-Step 2 — Select Variant
-
-Example:
-
-Short Sleeve
-
-The system loads only colors related to:
-
-Shirt + Short Sleeve
-
-Step 3 — Select Color
-
-Example:
-
-White
-
-The system loads only sizes related to:
-
-Shirt + Short Sleeve + White
-
-Step 4 — Select Size
-
-Example:
-
-32
-
-The system shows:
-
-Available Quantity = 80
-
-Step 5 — Enter Quantity
-
-Example:
-
-Quantity Requested = 10
-
-The system validates:
-
-10 <= 80
-
-If valid:
-
-product is created
-
-warehouse quantity becomes 70
-
-12. Why Dependent Dropdowns Are Important
-
-Dependent dropdowns prevent invalid combinations.
-
-Example of invalid combination:
-
-Type = Shirt
-Variant = Long Sleeve
-Color = Green
-Size = XXL
-
-If this combination does not exist in warehouse stock, the system must block it.
-
-13. Inventory Deduction Logic
+11. Inventory Deduction Logic
 
 When a product is created:
+1. Warehouse batch size stock is checked and validated.
+2. Stock is deducted from the selected warehouse batch sizes.
+3. Remaining warehouse stock is updated.
+4. The product is created with its own set of sizes, now available on the shelf.
 
-Warehouse stock is checked
+12. Order & Customer Module
 
-Quantity availability is validated
+Purpose
 
-Quantity is deducted
+Handles client transactions with a dual-path fulfillment flow.
 
-Remaining stock is updated
+Dual-Path Order Processing:
+- **Ready-Made (Product / Batch):** Sourced from shelf stock (Product) or directly from warehouse raw stock (Batch). Selling prices are snapshot-copied, and stock is deducted immediately.
+- **Custom-Made:** Intended for garments that require custom sewing. Cashiers type details manually and record **measurements**. No stock is deducted, and the order goes directly into `IN_PRODUCTION`.
 
-14. Inventory Accuracy
+Financial Computations:
+- **Total Amount:** Computed as the sum of all order items.
+- **Paid Amount:** User-entered deposit.
+- **Balance:** Total Amount − Paid Amount.
+- **Fully Paid:** Automatically set to true if Balance is zero.
+- **Order Status:** Derived automatically (if any custom-made item is present, status starts as `IN_PRODUCTION`, otherwise `PENDING` waiting for collection).
 
-The system must always know:
+13. Measurements & Tailoring Module
 
-original stock
+Purpose
 
-allocated stock
+Tracks custom-tailored orders and production queues.
 
-remaining stock
+Fulfillment Pipeline:
+- Orders containing custom items are listed on the **Tailoring Board** with `IN_PRODUCTION` status.
+- Tailors can inspect the detailed measurements (CHEST, WAIST, SHOULDER, SLEEVE, etc.) recorded for each line item.
+- Once completed, tailors mark the order as `READY_FOR_COLLECTION`. This updates the status and auto-sets the collection date to the current date.
 
-15. Product Quantity Validation
+14. Analytics Dashboard
 
-The backend must reject:
+A modern SaaS dashboard provides:
+- **Hero Stats:** Total Revenue, Outstanding Balance (Hero level, prominent layout).
+- **Secondary Stats:** Profit, Loss, Orders Count, Products Count, Active Production items.
+- **Trend Charts:** 12-week natural line chart showing orders over time.
+- **Status & Type Visuals:** Status donut chart (thin ring design with center value), Stock by Type horizontal progress bars, Revenue collected vs outstanding bar.
+- **Operational Panels:** Low Stock warnings and Upcoming Collections alert board.
 
-negative quantities
+15. Admin & User Hub
 
-quantities greater than available stock
+Includes full user management controls:
+- Promotes/demotes user roles (USER, MANAGER, ADMIN) using standard security controls.
+- Safe user deletion with confirmation modals.
+- **User Activity Audit:** Allows administrators to select any user and view their full history of created batches, products, and orders.
 
-invalid size combinations
+16. Security & Profile
 
-16. Backend Validation Responsibilities
+- JWT-based authentication with standard stateless security filters.
+- **Profile Page:** Merged settings into a clean layout enabling profile info updates (name, email, phone with uniqueness checks) and secure password resets directly without current password barriers.
 
-The backend is the final authority.
+17. Current Development Status
 
-Even if the frontend filters correctly, the backend must still verify:
-
-type exists
-
-variant belongs to type
-
-color belongs to type + variant
-
-size belongs to type + variant + color
-
-requested quantity exists
-
-17. Frontend Responsibilities
-
-The frontend is responsible for:
-
-displaying forms
-
-filtering dropdowns
-
-showing available quantities
-
-showing validation messages
-
-submitting requests
-
-18. Backend Responsibilities
-
-The backend is responsible for:
-
-enforcing rules
-
-validating requests
-
-saving records
-
-updating inventory
-
-preventing invalid stock manipulation
-
-19. Recommended Backend Structure
-
-com.yourapp
-├── config
-├── controller
-├── dto
-├── entity
-├── exception
-├── mapper
-├── repository
-├── security
-├── service
-└── util
-
-20. Recommended Development Phases
-
-Phase 1 — School Management
-
-Features:
-
-create school
-
-update school
-
-delete school
-
-list schools
-
-Phase 2 — Warehouse Inventory
-
-Features:
-
-create batches
-
-create stock combinations
-
-store quantities
-
-calculate totals
-
-Phase 3 — Product Management
-
-Features:
-
-create products from warehouse stock
-
-dependent dropdowns
-
-quantity validation
-
-stock deduction
-
-Phase 4 — Authentication & Security
-
-Features:
-
-login
-
-roles
-
-protected routes
-
-JWT authentication
-
-Phase 5 — Orders & Customers
-
-Features:
-
-customer management
-
-order creation
-
-order tracking
-
-payment handling
-
-Phase 6 — Measurements & Tailoring
-
-Features:
-
-measurement recording
-
-tailoring tracking
-
-custom manufacturing
-
-21. Security Design
-
-The system should support roles.
-
-Examples:
-
-ADMIN
-
-STAFF
-
-VIEWER
-
-Example Permissions
-
-Role
-
-Permission
-
-ADMIN
-
-Full access
-
-STAFF
-
-Manage products/orders
-
-VIEWER
-
-Read-only access
-
-22. API Design Philosophy
-
-The backend should expose REST APIs.
-
-Examples:
-
-GET /api/schools
-POST /api/schools
-
-GET /api/warehouse
-POST /api/warehouse
-
-GET /api/products
-POST /api/products
-
-23. Validation Philosophy
-
-Validation must happen:
-
-frontend side
-
-backend side
-
-Backend validation is mandatory.
-
-24. Database Philosophy
-
-The database must preserve relationships between:
-
-warehouse stock
-
-products
-
-schools
-
-future orders
-
-This ensures:
-
-accurate tracking
-
-reliable reporting
-
-proper inventory control
-
-25. Future Expansion Possibilities
-
-The system can later support:
-
-customer orders
-
-tailoring workflow
-
-measurements
-
-balances
-
-receipts
-
-dashboards
-
-reporting
-
-offline synchronization
-
-mobile support
-
-barcode scanning
-
-SMS notifications
-
-26. Long-Term Vision
-
-This project is not just a small CRUD application.
-
-It is evolving into:
-
-an inventory management system
-
-a production management system
-
-a school uniform management system
-
-a tailoring workflow system
-
-The architecture should therefore be designed carefully from the beginning to support growth.
-
-27. Final System Summary
-
-The system works like this:
-
-Warehouse stock is entered
-
-Stock is organized by:
-
-type
-
-variant
-
-color
-
-size
-
-Products are created from warehouse stock
-
-Dropdowns filter valid combinations
-
-Quantity is validated
-
-Inventory is deducted
-
-Schools remain optional
-
-Backend enforces all rules
-
-Frontend provides user interaction
-
-MySQL stores all relationships and records
-
-The warehouse remains the source of truth for all inventory operations.
+Phase 1 — School Management (Completed)
+Phase 2 — Warehouse Inventory (Completed)
+Phase 3 — Product Management & Stock Allocation (Completed)
+Phase 4 — Authentication & Security (Completed)
+Phase 5 — Orders, Customers & Financials (Completed)
+Phase 6 — Measurements, Custom Tailoring & Boards (Completed)
+Phase 7 — Admin Dashboard & User Activity Audits (Completed)
+Phase 8 — Profile Updates & Password Resets (Completed)

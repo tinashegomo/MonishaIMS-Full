@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Loader2, Package } from "lucide-react";
-import { useGetAllProducts, useDeleteProduct } from "@/hooks/InventoryHooks";
+import { useGetAllProducts, useDeleteProduct, useGetCurrentUser } from "@/hooks/InventoryHooks";
 import { ProductList } from "@/components/product/ProductList";
 import ConfirmProductDeleteModal from "@/components/product/ConfirmProductDeleteModal";
 
@@ -11,6 +11,7 @@ import ConfirmProductDeleteModal from "@/components/product/ConfirmProductDelete
  * Delete triggers a confirmation modal before removing.
  */
 export default function Products() {
+  const { data: user } = useGetCurrentUser();
   const { data: products, isLoading, isError, error } = useGetAllProducts();
   const { mutate: deleteProduct, isPending: isDeleting } = useDeleteProduct();
   const [selectedItem, setSelectedItem] = useState(null);
@@ -35,13 +36,15 @@ export default function Products() {
             Manage product allocations
           </p>
         </div>
-        <Link
-          to="/products/create-product"
-          className="inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-14 py-8 text-sm font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed press-scale transition-all duration-200"
-        >
-          <Plus className="h-16 w-16" />
-          Create Product
-        </Link>
+        {user?.userRole !== "USER" && (
+          <Link
+            to="/products/create-product"
+            className="inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-14 py-8 text-sm font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed press-scale transition-all duration-200"
+          >
+            <Plus className="h-16 w-16" />
+            Create Product
+          </Link>
+        )}
       </div>
 
       {isError && (

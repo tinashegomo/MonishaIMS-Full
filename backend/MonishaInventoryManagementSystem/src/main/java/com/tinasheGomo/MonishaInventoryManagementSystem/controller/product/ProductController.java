@@ -5,6 +5,7 @@ import com.tinasheGomo.MonishaInventoryManagementSystem.dto.product.response.Pro
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.product.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +18,7 @@ public class ProductController {
 
     private final ProductService productService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/create-product")
     public ProductResponseDTO createProduct(@RequestBody @Valid ProductRequestDTO requestDTO) {
         return productService.createProduct(requestDTO);
@@ -32,6 +34,7 @@ public class ProductController {
         return productService.getProductById(productId);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @DeleteMapping("/delete-product/{productId}")
     public void deleteProduct(@PathVariable UUID productId) {
         productService.deleteProduct(productId);

@@ -5,6 +5,7 @@ import com.tinasheGomo.MonishaInventoryManagementSystem.dto.school.SchoolRespons
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.school.SchoolService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +18,7 @@ public class SchoolController {
 
     private final SchoolService schoolService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/create-school")
     public SchoolResponseDTO createSchool(@RequestBody @Valid SchoolRequestDTO requestDTO){
         return schoolService.createSchool(requestDTO);
@@ -32,12 +34,14 @@ public class SchoolController {
         return schoolService.getAllSchools();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PutMapping("/update-school/{schoolId}")
     public SchoolResponseDTO updateSchool(@PathVariable UUID schoolId,
                                           @RequestBody @Valid SchoolRequestDTO requestDTO){
         return schoolService.updateSchool(schoolId,requestDTO);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @DeleteMapping("/delete-school/{schoolId}")
     public void deleteSchool(@PathVariable UUID schoolId){
         schoolService.deleteSchool(schoolId);

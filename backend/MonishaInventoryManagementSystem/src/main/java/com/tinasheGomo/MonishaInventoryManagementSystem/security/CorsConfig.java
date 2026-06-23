@@ -33,8 +33,9 @@ public class CorsConfig {
          "These frontends are allowed to send requests"
          */
         config.setAllowedOrigins(List.of(
-                "http://localhost:5173",   // React Vite
-                "http://localhost:3000"    // React CRA
+                "http://localhost:5173",                      // React Vite (local dev)
+                "http://localhost:3000",                      // React CRA (local dev)
+                "https://monisha-ims.vercel.app"              // Production frontend (Vercel)
         ));
 
 

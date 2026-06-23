@@ -33,7 +33,7 @@ export default function ForgotPassword() {
     setError("");
     setSuccess("");
     try {
-      await axios.patch(`http://localhost:8080/api/monishaInventory/user/change-password`, null, {
+      await axios.patch(`https://monishainventorymanagementsystem-backend.onrender.com/api/monishaInventory/user/change-password`, null, {
         params: { newPassword: data.newPassword },
       });
       setSuccess("Password reset successfully. You can now sign in.");

@@ -5,6 +5,7 @@ import {
   useCreateSchool,
   useUpdateSchool,
   useDeleteSchool,
+  useGetCurrentUser,
 } from "@/hooks/InventoryHooks";
 import { SchoolModal } from "@/components/school/SchoolModal";
 
@@ -15,6 +16,7 @@ export default function SchoolsPage() {
   const [deletingId, setDeletingId] = useState(null);
 
   // --- Data & mutations ---
+  const { data: user } = useGetCurrentUser();
   const { data: schools = [], isLoading, isError } = useGetAllSchools();
 
   const { mutate: createSchool, isPending: isCreating, error: createError } = useCreateSchool();
@@ -69,13 +71,15 @@ export default function SchoolsPage() {
             Manage schools associated with uniform products
           </p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-14 py-8 text-sm font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed press-scale transition-all duration-200"
-        >
-          <Plus className="h-16 w-16" />
-          Add School
-        </button>
+        {user?.userRole !== "USER" && (
+          <button
+            onClick={handleOpenCreate}
+            className="inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-14 py-8 text-sm font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed press-scale transition-all duration-200"
+          >
+            <Plus className="h-16 w-16" />
+            Add School
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -98,13 +102,15 @@ export default function SchoolsPage() {
           <p className="mt-8 max-w-xs text-body-normal text-text-muted">
             Get started by adding your first school.
           </p>
-          <button
-            onClick={handleOpenCreate}
-            className="mt-20 inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-20 py-12 text-body-normal font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed press-scale transition-all duration-200"
-          >
-            <Plus className="h-16 w-16" />
-            Add School
-          </button>
+          {user?.userRole !== "USER" && (
+            <button
+              onClick={handleOpenCreate}
+              className="mt-20 inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-20 py-12 text-body-normal font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed press-scale transition-all duration-200"
+            >
+              <Plus className="h-16 w-16" />
+              Add School
+            </button>
+          )}
         </div>
       ) : (
         <div className="w-full rounded-card bg-surface-default">

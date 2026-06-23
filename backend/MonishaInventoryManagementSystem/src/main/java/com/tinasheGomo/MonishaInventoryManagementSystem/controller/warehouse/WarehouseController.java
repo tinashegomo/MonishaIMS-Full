@@ -8,6 +8,7 @@ import com.tinasheGomo.MonishaInventoryManagementSystem.service.warehouse.Wareho
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.warehouse.WarehouseBatchSizeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class WarehouseController {
     private final WarehouseBatchService warehouseBatchService;
     private final WarehouseBatchSizeService warehouseBatchSizeService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/create-batch")
     public WarehouseBatchResponseDTO createWarehouseBatch(@RequestBody @Valid WarehouseBatchRequestDTO requestDTO){
         return warehouseBatchService.createWarehouseBatch(requestDTO);
@@ -36,11 +38,13 @@ public class WarehouseController {
         return warehouseBatchService.getAllWarehouseBatches();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @DeleteMapping("/delete-batch/{batchId}")
     public void deleteWarehouseBatch(@PathVariable UUID batchId){
         warehouseBatchService.deleteWarehouseBatch(batchId);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/add-sizes-to-batch/{batchId}")
     public List<WarehouseBatchSizeResponseDTO> addSizesToBatch(
             @PathVariable UUID batchId,
