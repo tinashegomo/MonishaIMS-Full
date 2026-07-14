@@ -14,20 +14,24 @@ const inputErr =
  * Shows a dropdown of existing customers as the user types.
  * If no match found, expands inline fields for creating a new customer.
  *
- * customerMode: true = existing customer, false = new customer, null = nothing selected yet
+ * customerMode: true = existing customer, false = new customer, null = nothing selected
  */
 export default function CustomerInput({ register, setValue, errors, customers = [], customerMode, setCustomerMode, selectedCustomer, setSelectedCustomer }) {
 
+  // ─── State ──────────────────────────────────────────────────
   const [searchText, setSearchText] = useState("");
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
-  // Filter customers by name (case-insensitive contains)
+  // ─── Computed Values ────────────────────────────────────────
   const matchingCustomers = useMemo(() => {
     if (!searchText.trim()) return [];
-
     const query = searchText.toLowerCase();
     return customers.filter((customer) => customer.customerName.toLowerCase().includes(query));
   }, [customers, searchText]);
+
+  const showDropdown = isFocused && matchingCustomers.length > 0;
+
+  // ─── Functions ──────────────────────────────────────────────
 
   const handleSelect = (customer) => {
     setSelectedCustomer(customer);
@@ -36,13 +40,13 @@ export default function CustomerInput({ register, setValue, errors, customers = 
     setValue("customerId", customer.customerId);
     setValue("phoneNumber", "");
     setSearchText("");
-    setShowDropdown(false);
+    setIsFocused(false);
   };
 
   const handleCreateNew = () => {
     setCustomerMode(false);
     setValue("customerId", "");
-    setShowDropdown(false);
+    setIsFocused(false);
   };
 
   const handleClear = () => {
@@ -55,25 +59,23 @@ export default function CustomerInput({ register, setValue, errors, customers = 
   const handleInputChange = (e) => {
     const value = e.target.value;
     setSearchText(value);
-    setShowDropdown(value.trim().length > 0);
-
-    if (!value.trim()) {
-      handleClear();
-    }
   };
 
+  // ─── Render ─────────────────────────────────────────────────
   return (
     <div className="space-y-12">
-      {/* Customer Name Input */}
+
+      {/* ── Customer Name Input ─────────────────────────────────── */}
       <div>
         <label className="mb-8 block text-ui-label font-semibold text-text-secondary">
           Customer Name
         </label>
         <div
           className="relative"
+          tabIndex={-1}
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget)) {
-              setShowDropdown(false);
+            if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) {
+              setIsFocused(false);
             }
           }}
         >
@@ -82,6 +84,7 @@ export default function CustomerInput({ register, setValue, errors, customers = 
             placeholder="Type customer name..."
             aria-invalid={errors.customerName ? "true" : "false"}
             className={`${inputBase} ${errors.customerName ? inputErr : inputOk}`}
+            onFocus={() => setIsFocused(true)}
             {...register("customerName")}
             onChange={(e) => {
               register("customerName").onChange(e);
@@ -89,19 +92,20 @@ export default function CustomerInput({ register, setValue, errors, customers = 
             }}
           />
 
-          {/* Dropdown: matching existing customers */}
-          {showDropdown && matchingCustomers.length > 0 && (
+          {/* Search results dropdown */}
+          {showDropdown && (
             <div className="absolute z-10 mt-2 w-full rounded-input border border-border-default bg-surface-default shadow-elevation-2 max-h-200 overflow-y-auto animate-scale-in">
               {matchingCustomers.map((customer) => (
-                <div
+                <button
                   key={customer.customerId}
+                  type="button"
                   onMouseDown={(e) => {
                     e.preventDefault();
                     handleSelect(customer);
                   }}
                   className="flex w-full items-center justify-between px-16 py-10 cursor-pointer hover:bg-surface-muted transition-colors"
                 >
-                  <div>
+                  <div className="text-left">
                     <p className="text-body-normal font-medium text-text-primary">
                       {customer.customerName}
                     </p>
@@ -112,7 +116,7 @@ export default function CustomerInput({ register, setValue, errors, customers = 
                   {selectedCustomer?.customerId === customer.customerId && (
                     <Check className="h-14 w-14 text-brand-primary" />
                   )}
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -125,7 +129,7 @@ export default function CustomerInput({ register, setValue, errors, customers = 
         )}
       </div>
 
-      {/* Selected existing customer info */}
+      {/* ── Selected Existing Customer Info ─────────────────────── */}
       {customerMode === true && selectedCustomer && (
         <div className="rounded-input border border-brand-subtle bg-brand-tint px-16 py-12">
           <div className="flex items-center justify-between">
@@ -148,11 +152,14 @@ export default function CustomerInput({ register, setValue, errors, customers = 
         </div>
       )}
 
-      {/* No matches found — show Create new prompt */}
+      {/* ── Create New Customer Prompt ──────────────────────────── */}
       {customerMode === null && !selectedCustomer && searchText.trim().length > 0 && matchingCustomers.length === 0 && (
         <button
           type="button"
-          onClick={handleCreateNew}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            handleCreateNew();
+          }}
           className="flex w-full items-center gap-10 rounded-input border border-dashed border-brand-subtle bg-brand-tint/50 px-16 py-12 text-body-normal font-medium text-brand-primary hover:bg-brand-tint transition-all duration-200 press-scale"
         >
           <UserPlus className="h-16 w-16" />
@@ -160,7 +167,7 @@ export default function CustomerInput({ register, setValue, errors, customers = 
         </button>
       )}
 
-      {/* New customer fields (inline expansion) */}
+      {/* ── New Customer Fields (Inline Expansion) ──────────────── */}
       {customerMode === false && (
         <div className="space-y-12 rounded-input border border-brand-subtle bg-brand-tint/30 p-16">
           <div className="flex items-center gap-8">

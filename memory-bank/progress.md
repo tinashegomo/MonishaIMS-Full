@@ -18,8 +18,8 @@
 - [x] Tailwind 4 configured via index.css @theme (red primary scale, semantic tokens, dark mode)
 - [x] ESLint 10 flat config (eslint.config.js)
 - [x] npm run build passes
-- [x] npm run lint passes
-- [x] Frontend dependencies: axios, @tanstack/react-query, react-hook-form, yup, @hookform/resolvers, react-router-dom, lucide-react, tailwindcss v4, @tailwindcss/vite
+- [x] npm run lint passes (13 pre-existing warnings, not from our changes)
+- [x] Frontend dependencies: axios, @tanstack/react-query, react-hook-form, yup, @hookform/resolvers, react-router-dom, lucide-react, tailwindcss v4, @tailwindcss/vite, xlsx, jspdf, jspdf-autotable
 
 ---
 
@@ -35,11 +35,12 @@
 - [x] AuthFilter (OncePerRequestFilter, skips /auth/, populates SecurityContext)
 - [x] AuthUser (wraps UserEntity, implements UserDetails, returns ROLE_* authorities)
 - [x] CustomUserDetailsService (loads user by email)
-- [x] SecurityConfig (stateless, BCrypt, /auth/** public, @EnableMethodSecurity enabled but unused)
+- [x] SecurityConfig (stateless, BCrypt, /auth/** public, @EnableMethodSecurity enabled)
 - [x] CorsConfig (localhost:5173, localhost:3000)
 - [x] SecurityUtils (static helpers: getCurrentUser, getCurrentUserEmail, getCurrentUserRole)
 - [x] DataSeeder (creates admin tinashegomo96@gmail.com / Tinashe@123 on first boot)
-- [ ] Role-based authorization (@PreAuthorize on admin endpoints)
+- [x] Role-based authorization on restock + admin endpoints (@PreAuthorize)
+- [ ] Role-based authorization on user management endpoints
 - [ ] Refresh-token flow (not in v1 scope)
 
 ### Users
@@ -69,33 +70,44 @@
 - [x] Frontend Customers page — list + create/edit modal
 
 ### Warehouse / Batches
-- [x] WarehouseBatchEntity (batchId PK, batchName unique, type, variant, color, batchPrice, totalQuantity, totalPrice, description?, timestamps, @OneToMany→batchSizes+products)
+- [x] WarehouseBatchEntity (batchId PK, batchName unique, type, variant, color, batchPrice, totalQuantity, totalPrice, description?, timestamps, @OneToMany→batchSizes+products, depletedAt)
 - [x] WarehouseBatchSizeEntity (sizeId PK, size, quantity, timestamps, @ManyToOne→batch)
 - [x] WarehouseBatchRepository (existsByBatchName, findByBatchName, findByBatchId)
 - [x] WarehouseBatchSizeRepository (findByBatch_BatchId, findByBatch_BatchIdAndSize)
-- [x] WarehouseBatchService (create — with sizes, list, get-by-id, delete)
-- [x] WarehouseBatchSizeService (add-size-to-batch, get-sizes-by-batch, calculateBatchTotalQuantity, deductStock)
-- [x] WarehouseController (/warehouse/create-batch, get-all-batches, get-batch-byId, delete-batch)
+- [x] WarehouseBatchService (create — with sizes, list, get-by-id, restockBatch)
+- [x] WarehouseBatchSizeService (add-size-to-batch, get-sizes-by-batch, calculateBatchTotalQuantity, deductStock — with auto-depletion detection, restockBatchSizes — with history recording)
+- [x] WarehouseController (/warehouse/create-batch, get-all-batches, get-batch-byId, restock-batch, restock-history, depleted-history)
 - [x] WarehouseBatchRequestDTO (batchName, batchPrice, type, variant, color, description?, batchSizes — @NotEmpty nested list)
 - [x] WarehouseBatchSizeRequestDTO (size, quantity — @Min 0)
-- [x] WarehouseBatchResponseDTO, WarehouseBatchSizeResponseDTO
+- [x] SizeQuantityDTO (size, quantity — reusable for restock)
+- [x] WarehouseBatchResponseDTO, WarehouseBatchSizeResponseDTO (with depletedAt)
+- [x] RestockHistoryEntity + DepletedHistoryEntity + repositories + DTOs
+- [x] RestockHistoryResponseDTO, DepletedHistoryResponseDTO
 - [x] WarehouseBatchMapper, WarehouseBatchSizeMapper
-- [ ] Frontend Warehouse page (most complex form — useFieldArray for sizes)
+- [x] Frontend WarehouseBatchList — low stock alerts, depleted styling, restock button, no delete button
+- [x] Frontend WarehouseBatchDetails — restock history, depletion history, low stock alerts, depleted badge, size card indicators
+- [x] Frontend Warehouse.jsx — restock modal, no delete modal
+- [x] Frontend CreateWarehouseBatch — full create form
 - [ ] Update batch endpoint
 
 ### Products
-- [x] ProductEntity (productId PK, productName, productPrice, totalPrice, type, variant, color, totalQuantity, description?, @ManyToOne→school?, @ManyToOne→batch, @OneToMany→productSizes)
+- [x] ProductEntity (productId PK, productName, productPrice, totalPrice, type, variant, color, totalQuantity, description?, @ManyToOne→school?, @ManyToOne→batch, @OneToMany→productSizes, depletedAt)
 - [x] ProductSizeEntity (productSizeId PK, size, quantity, timestamps, @ManyToOne→product)
 - [x] ProductRepository (findByProductId), ProductSizeRepository (findByProduct_ProductId, findByProduct_ProductIdAndSize)
-- [x] ProductService (create — with sizes from batch + optional school, list, get-by-id, delete)
-- [x] ProductSizeService (add-size-to-product, get-sizes-by-product, calculateProductTotalQuantity, deductStock)
-- [x] ProductController (/product/create-product, get-all-products, get-product-byId, delete-product)
+- [x] ProductService (create — with sizes from batch + optional school, list, get-by-id, restockProduct)
+- [x] ProductSizeService (add-size-to-product, get-sizes-by-product, calculateProductTotalQuantity, deductStock — with auto-depletion detection, restockProductSizes — calls batchSizeService.deductStock, with history recording)
+- [x] ProductController (/product/create-product, get-all-products, get-product-byId, restock-product, restock-history, depleted-history)
 - [x] ProductRequestDTO (productName, productPrice, description?, productSizes — @NotEmpty, schoolId?, batchId — @NotNull)
 - [x] ProductSizeRequestDTO (size, quantity — @Min 1)
-- [x] ProductResponseDTO (flattens schoolId/schoolName, batchId/batchName)
+- [x] ProductResponseDTO (flattens schoolId/schoolName, batchId/batchName, with depletedAt)
 - [x] ProductSizeResponseDTO
+- [x] ProductRestockHistoryEntity + ProductDepletedHistoryEntity + repositories + DTOs
+- [x] ProductRestockHistoryResponseDTO, ProductDepletedHistoryResponseDTO
 - [x] ProductMapper (flattens school, batch), ProductSizeMapper
-- [ ] Frontend Products page (dependent dropdowns from batch inventory)
+- [x] Frontend ProductList — low stock alerts, depleted styling, restock button, no delete button
+- [x] Frontend ProductDetails — restock history, depletion history, low stock alerts, depleted badge, size card indicators
+- [x] Frontend Products.jsx — restock modal, no delete modal
+- [x] Frontend CreateProduct — full create form
 - [ ] Update product endpoint
 
 ### Orders
@@ -105,7 +117,7 @@
 - [x] OrderRepository (findByOrderId, findByOrderNumber, findByOrderStatus)
 - [x] OrderItemRepository (findByOrderItemId)
 - [x] OrderService (create with full flow: snapshot+deduct+calc+derive-status, list, get-by-id, get-by-status, update-status)
-- [x] OrderItemService (3 modes: product ready-made, batch ready-made, custom-made)
+- [x] OrderItemService (3 modes: product ready-made, batch ready-made, custom-made — all deductions via deductStock)
 - [x] OrderController (POST create, GET all, GET by-id, GET by-status, PATCH update-status — NO delete)
 - [x] OrderRequestDTO (customerId, schoolId?, paidAmount, collectionDate?, notes?, orderItems — @NotEmpty)
 - [x] OrderItemRequestDTO (productId?, batchId?, size?, quantity, type?, variant?, color?, unitPrice?, customMade?, measurementsTaken?, measurements?)
@@ -113,9 +125,7 @@
 - [x] OrderItemResponseDTO (flattens productId, batchId, measurements)
 - [x] OrderMapper (toEntity ignores 10 fields set by service; toResponse flattens customer+school)
 - [x] OrderItemMapper (toEntity ignores type, variant, color, unitPrice, totalPrice, order, product, batch, measurements)
-- [ ] Frontend Orders page (list with status filter + create-order wizard)
-- [ ] Add/remove items on existing order
-- [ ] Custom-made stock deduction on status transition to COMPLETED
+- [x] Frontend Orders — list + create order form
 
 ### Measurements (Tailoring)
 - [x] MeasurementEntity (measurementId PK, measurementName, measurementValue BigDecimal, @ManyToOne→orderItem)
@@ -125,6 +135,11 @@
 - [x] MeasurementResponseDTO (measurementId, measurementName, measurementValue, orderItemId)
 - [x] MeasurementMapper (flattens orderItem.orderItemId → orderItemId)
 - [ ] Frontend Tailoring page (list IN_PRODUCTION orders, mark-complete action)
+
+### Admin
+- [x] AdminService (resetDatabase — uses JdbcTemplate, deletes all 14 tables in FK-safe order)
+- [x] AdminController (DELETE /api/monishaInventory/admin/reset-database, @PreAuthorize ADMIN)
+- [x] No AdminRepository needed — uses JdbcTemplate directly
 
 ### Shared / Cross-cutting
 - [x] GlobalExceptionHandler (NotFoundException → 404, DuplicateException → 409)
@@ -141,37 +156,47 @@
 - [x] App.jsx (route table)
 - [x] main.jsx (QueryClientProvider + BrowserRouter)
 - [x] index.css (Tailwind 4 @theme + semantic tokens + dark mode)
-- [x] api/InventoryAPI.js (axios instance + JWT request interceptor + all endpoint functions)
+- [x] api/InventoryAPI.js (axios instance + JWT request interceptor + all endpoint functions — product endpoints fixed with `/`)
 - [x] hooks/InventoryHooks.js (TanStack Query hooks for all endpoints)
 - [x] utils/tokenUtils.js (getStoredToken, saveToken, removeToken, isTokenExpired)
+- [x] utils/exportUtils.js (shared Excel/PDF export with column config arrays)
 - [x] components/auth/ProtectedRoute.jsx (token check → redirect to /login)
 - [x] components/layout/MainLayout.jsx (sidebar + header + Outlet)
 - [x] components/layout/Sidebar.jsx (nav links + brand + user profile from useGetCurrentUser)
 - [x] components/layout/Header.jsx (search bar + notifications + user chip from useGetCurrentUser)
+- [x] components/layout/TopNav.jsx (simplified dropdown pattern — onBlur/relatedTarget + onMouseDown/preventDefault)
+- [x] components/layout/BottomNav.jsx (simplified dropdown pattern)
 - [x] components/layout/NavLinks.jsx (route metadata with icons, badge, isFuture flag)
+- [x] components/shared/Modal.jsx (composition pattern, fixed overlay, onBlur/relatedTarget closing)
+- [x] components/order/CustomerInput.jsx (simplified dropdown pattern)
+- [x] components/warehouse/WarehouseForm.jsx (single openDropdown state)
+- [x] components/warehouse/WarehouseBatchList.jsx (low stock alerts, depleted styling, restock button, no delete)
+- [x] components/product/ProductList.jsx (low stock alerts, depleted styling, restock button, no delete)
 - [x] pages/auth/Login.jsx — styled page shell with error banner + LoginForm
 - [x] components/auth/LoginForm.jsx — 2 fields (email, password), password toggle, loading spinner
 - [x] pages/auth/Register.jsx — styled page shell with error banner + RegisterForm
 - [x] components/auth/RegisterForm.jsx — 4 fields (username, email, password, phone), password toggle
-- [~] pages/dashboard/Dashboard.jsx (placeholder)
-- [x] pages/warehouse/Warehouse.jsx (full list page)
+- [x] pages/dashboard/Dashboard.jsx — full dashboard with charts, info panels, reset database button + confirmation modal
+- [x] pages/warehouse/Warehouse.jsx (full list page + restock modal, no delete modal)
+- [x] pages/warehouse/WarehouseBatchDetails.jsx (restock history, depletion history, low stock alerts, depleted badge, size card indicators)
 - [x] pages/warehouse/CreateWarehouseBatch.jsx (full create form)
-- [x] pages/products/Products.jsx (full list page)
+- [x] pages/products/Products.jsx (full list page + restock modal, no delete modal)
+- [x] pages/products/ProductDetails.jsx (restock history, depletion history, low stock alerts, depleted badge, size card indicators)
 - [x] pages/products/CreateProduct.jsx (full create form)
 - [x] pages/schools/Schools.jsx (full CRUD list + modal)
 - [x] pages/customers/Customers.jsx (full CRUD list + modal)
-- [x] pages/orders/Orders.jsx (full list page)
-- [x] pages/orders/CreateOrder.jsx (full create form)
-- [~] pages/tailoring/Tailoring.jsx (placeholder)
-- [~] pages/settings/Settings.jsx (placeholder)
-- [~] pages/profile/Profile.jsx (placeholder)
+- [x] pages/orders/Orders.jsx (full list page + create order form)
+- [ ] pages/tailoring/Tailoring.jsx (placeholder)
+- [ ] pages/settings/Settings.jsx (placeholder)
+- [ ] pages/profile/Profile.jsx (placeholder)
 
 ### Frontend — Plumbing
 - [x] 401 response interceptor (auto-redirect to /login on expired token)
 - [x] Login redirects to "/" (was "/dashboard" — no such route)
+- [x] Modal pattern — fixed overlay + onBlur/relatedTarget closing, no <dialog>, no useRef, no useEffect
+- [x] Dropdown pattern — container-based relative+absolute, single openDropdown state, no fixed positioning
 - [ ] Global toast/notification system
 - [ ] Loading skeletons per page
-- [ ] Confirmation modal for delete actions
 - [ ] Optimistic updates for low-risk mutations
 
 ### Frontend — Yup Schemas
@@ -209,6 +234,8 @@
 - [x] memory-bank/systemPatterns.md
 - [x] memory-bank/activeContext.md
 - [x] memory-bank/progress.md
+- [x] frontend/README.md (comprehensive project structure, design system, patterns)
+- [x] README.md (root — full stack overview)
 - [ ] ADR: JWT-in-localStorage vs httpOnly cookie
 - [ ] ADR: Verb-suffixed URL convention
 - [ ] ADR: Snapshot fields on OrderItem

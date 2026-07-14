@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { warehouseBatchRequestSchema, warehouseBatchRequestDefaultValues } from "@/yupSchema/warehouse/request/WarehouseBatchRequestDTO";
+import { useWarehouseForm } from "@/hooks/useWarehouseForm";
 
 const inputBase =
   "w-full rounded-input border bg-surface-elevated px-16 py-12 text-body-normal text-text-primary placeholder:text-text-muted outline-none transition-all duration-200";
@@ -11,48 +12,44 @@ const inputOk =
 const inputErr =
   "border-danger-main focus:border-danger-hover focus:ring-2 focus:ring-danger-bg";
 
-/**
- * WarehouseForm — create form for new warehouse batches.
- *
- * Uses suggestion dropdowns (onMouseDown + preventDefault) for type/variant/color.
- * Sizes managed in plain React state — not part of RHF.
- * RHF handles main fields; sizes passed separately to onSubmit.
- */
 export const WarehouseForm = ({ onSubmit, isPending, batches, submitLabel = "Create Batch" }) => {
-  const [showTypes, setShowTypes] = useState(false);
-  const [showVariants, setShowVariants] = useState(false);
-  const [showColors, setShowColors] = useState(false);
 
-  const types = [...new Set(batches.map((batch) => batch.type))];
-  const variants = [...new Set(batches.map((batch) => batch.variant))];
-  const colors = [...new Set(batches.map((batch) => batch.color))];
-
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     resolver: yupResolver(warehouseBatchRequestSchema),
     defaultValues: warehouseBatchRequestDefaultValues,
     mode: "onBlur",
   });
 
-  const [sizes, setSizes] = useState([]);
+  const {types, variants, colors, handleTypeSelect, handleVariantSelect, handleColorSelect, sizes, addRow, removeRow, updateRow,} = useWarehouseForm({ batches, setValue });
 
-  const addRow = () => {
-    setSizes([...sizes, { size: "", quantity: "" }]);
-  };
+  // Single dropdown state — "type" | "variant" | "color" | null
+  const [openDropdown, setOpenDropdown] = useState(null);
 
-  const removeRow = (index) => {
-    setSizes(sizes.filter((_, i) => i !== index));
-  };
+  // Watch input values for filtering suggestions
+  const typeValue = watch("type") || "";
+  const variantValue = watch("variant") || "";
+  const colorValue = watch("color") || "";
 
-  const updateRow = (index, field, value) => {
-    const updated = [...sizes];
-    updated[index] = { ...updated[index], [field]: value };
-    setSizes(updated);
-  };
+  // Merge RHF register with custom onChange for dropdown fields
+  const typeRegister = register("type");
+  const variantRegister = register("variant");
+  const colorRegister = register("color");
+
+  // Filter suggestions as user types
+  const filteredTypes = types.filter(type =>
+    type.toLowerCase().includes(typeValue.toLowerCase())
+  );
+  const filteredVariants = variants.filter(variant =>
+    variant.toLowerCase().includes(variantValue.toLowerCase())
+  );
+  const filteredColors = colors.filter(color =>
+    color.toLowerCase().includes(colorValue.toLowerCase())
+  );
 
   return (
     <form onSubmit={handleSubmit((data) => onSubmit(data, sizes))} className="space-y-24">
 
-      {/* Batch Name + Price */}
+      {/* ── Batch Name + Price ─────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-16 md:grid-cols-2">
         <div>
           <label className="mb-8 block text-ui-label font-semibold text-text-secondary">Batch Name</label>
@@ -80,101 +77,132 @@ export const WarehouseForm = ({ onSubmit, isPending, batches, submitLabel = "Cre
         </div>
       </div>
 
-      {/* Type → Variant → Color suggestion dropdowns */}
+      {/* ── Type → Variant → Color suggestion dropdowns ────────── */}
       <div className="grid grid-cols-1 gap-16 md:grid-cols-3">
+
+        {/* ── Type ─── */}
         <div
           className="relative"
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget)) {
-              setShowTypes(false);
+            if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) {
+              setOpenDropdown(null);
             }
           }}
         >
           <label className="mb-8 block text-ui-label font-semibold text-text-secondary">Type</label>
           <input
+            {...typeRegister}
             type="text"
             placeholder="e.g. Shirt"
             aria-invalid={errors.type ? "true" : "false"}
             className={`${inputBase} ${errors.type ? inputErr : inputOk}`}
-            onFocus={() => setShowTypes(true)}
-            {...register("type")}
+            onFocus={() => setOpenDropdown("type")}
+            onChange={(e) => {
+              typeRegister.onChange(e);
+              setOpenDropdown("type");
+            }}
           />
-          {showTypes && types.length > 0 && (
+          {openDropdown === "type" && filteredTypes.length > 0 && (
             <div className="absolute z-10 mt-2 w-full rounded-input border border-border-default bg-surface-default shadow-elevation-2 overflow-hidden animate-scale-in">
-              {types.map((type) => (
-                <div
+              {filteredTypes.map((type) => (
+                <button
                   key={type}
-                  onMouseDown={(e) => { e.preventDefault(); setValue("type", type); setShowTypes(false); }}
-                  className="cursor-pointer px-16 py-10 text-body-normal text-text-primary hover:bg-surface-muted transition-colors"
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleTypeSelect(type);
+                    setOpenDropdown(null);
+                  }}
+                  className="block w-full cursor-pointer px-16 py-6 text-left text-body-small text-text-primary hover:bg-surface-muted transition-colors"
                 >
                   {type}
-                </div>
+                </button>
               ))}
             </div>
           )}
           {errors.type && (<p className="mt-4 text-body-small text-danger-main">{errors.type.message}</p>)}
         </div>
 
+        {/* ── Variant ─── */}
         <div
           className="relative"
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget)) {
-              setShowVariants(false);
+            if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) {
+              setOpenDropdown(null);
             }
           }}
         >
           <label className="mb-8 block text-ui-label font-semibold text-text-secondary">Variant</label>
           <input
+           {...variantRegister}
             type="text"
             placeholder="e.g. Short Sleeve"
             aria-invalid={errors.variant ? "true" : "false"}
             className={`${inputBase} ${errors.variant ? inputErr : inputOk}`}
-            onFocus={() => setShowVariants(true)}
-            {...register("variant")}
+            onFocus={() => setOpenDropdown("variant")}
+            onChange={(e) => {
+              variantRegister.onChange(e);
+              setOpenDropdown("variant");
+            }}
           />
-          {showVariants && variants.length > 0 && (
+          {openDropdown === "variant" && filteredVariants.length > 0 && (
             <div className="absolute z-10 mt-2 w-full rounded-input border border-border-default bg-surface-default shadow-elevation-2 overflow-hidden animate-scale-in">
-              {variants.map((variant) => (
-                <div
+              {filteredVariants.map((variant) => (
+                <button
                   key={variant}
-                  onMouseDown={(e) => { e.preventDefault(); setValue("variant", variant); setShowVariants(false); }}
-                  className="cursor-pointer px-16 py-10 text-body-normal text-text-primary hover:bg-surface-muted transition-colors"
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleVariantSelect(variant);
+                    setOpenDropdown(null);
+                  }}
+                  className="block w-full cursor-pointer px-16 py-6 text-left text-body-small text-text-primary hover:bg-surface-muted transition-colors"
                 >
                   {variant}
-                </div>
+                </button>
               ))}
             </div>
           )}
           {errors.variant && (<p className="mt-4 text-body-small text-danger-main">{errors.variant.message}</p>)}
         </div>
 
+        {/* ── Color ─── */}
         <div
           className="relative"
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget)) {
-              setShowColors(false);
+            if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) {
+              setOpenDropdown(null);
             }
           }}
         >
           <label className="mb-8 block text-ui-label font-semibold text-text-secondary">Color</label>
           <input
+            {...colorRegister}
             type="text"
             placeholder="e.g. White"
             aria-invalid={errors.color ? "true" : "false"}
             className={`${inputBase} ${errors.color ? inputErr : inputOk}`}
-            onFocus={() => setShowColors(true)}
-            {...register("color")}
+            onFocus={() => setOpenDropdown("color")}
+            onChange={(e) => {
+              colorRegister.onChange(e);
+              setOpenDropdown("color");
+            }}
           />
-          {showColors && colors.length > 0 && (
+          {openDropdown === "color" && filteredColors.length > 0 && (
             <div className="absolute z-10 mt-2 w-full rounded-input border border-border-default bg-surface-default shadow-elevation-2 overflow-hidden animate-scale-in">
-              {colors.map((color) => (
-                <div
+              {filteredColors.map((color) => (
+                <button
                   key={color}
-                  onMouseDown={(e) => { e.preventDefault(); setValue("color", color); setShowColors(false); }}
-                  className="cursor-pointer px-16 py-10 text-body-normal text-text-primary hover:bg-surface-muted transition-colors"
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleColorSelect(color);
+                    setOpenDropdown(null);
+                  }}
+                  className="block w-full cursor-pointer px-16 py-6 text-left text-body-small text-text-primary hover:bg-surface-muted transition-colors"
                 >
                   {color}
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -182,7 +210,7 @@ export const WarehouseForm = ({ onSubmit, isPending, batches, submitLabel = "Cre
         </div>
       </div>
 
-      {/* Description (optional) */}
+      {/* ── Description (optional) ─────────────────────────────── */}
       <div>
         <label className="mb-8 block text-ui-label font-semibold text-text-secondary">Description (optional)</label>
         <textarea
@@ -195,7 +223,7 @@ export const WarehouseForm = ({ onSubmit, isPending, batches, submitLabel = "Cre
         {errors.description && (<p className="mt-4 text-body-small text-danger-main">{errors.description.message}</p>)}
       </div>
 
-      {/* Sizes & Quantities */}
+      {/* ── Sizes & Quantities ─────────────────────────────────── */}
       <div className="rounded-card border border-border-default bg-surface-elevated/30 p-20">
         <div className="mb-12 flex items-center justify-between">
           <label className="text-ui-label font-semibold text-text-secondary">Sizes &amp; Quantities</label>
@@ -253,7 +281,7 @@ export const WarehouseForm = ({ onSubmit, isPending, batches, submitLabel = "Cre
         </div>
       </div>
 
-      {/* Submit */}
+      {/* ── Submit ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-12 pt-8">
         <button
           type="submit"

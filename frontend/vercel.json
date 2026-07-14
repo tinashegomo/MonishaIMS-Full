@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/monishaInventory/:path*",
+      "destination": "https://monishainventorymanagementsystem-backend.onrender.com/api/monishaInventory/:path*"
+    }
+  ]
+}

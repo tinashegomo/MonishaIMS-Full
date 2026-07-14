@@ -22,6 +22,7 @@ import CreateOrder from './pages/orders/CreateOrder';
 import OrderDetails from './pages/orders/OrderDetails';
 import Tailoring from './pages/tailoring/Tailoring';
 import Profile from './pages/profile/Profile';
+import Admin from './pages/admin/Admin';
 import AdminUsers from './pages/admin/Users';
 import AdminUserDetails from './pages/admin/UserDetails';
 
@@ -56,6 +57,7 @@ function App() {
           <Route path="/orders/:orderId" element={<OrderDetails />} />
           <Route path="/tailoring" element={<Tailoring />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/users/:userId" element={<AdminUserDetails />} />
         </Route>

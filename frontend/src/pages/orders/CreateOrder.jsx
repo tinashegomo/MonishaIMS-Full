@@ -1,15 +1,15 @@
-import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, ChevronDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {useGetAllCustomers,useGetAllProducts,useGetAllWarehouseBatches,useGetAllSchools,useCreateCustomer,useCreateOrder,} from "@/hooks/InventoryHooks";
 import {orderRequestSchema,orderRequestDefaultValues,} from "@/yupSchema/order/OrderRequestDTO";
-import {validateOrderItems,buildItemsPayload,createManageItem,createManageMeasurement,} from "@/helpers/order/orderHelpers";
+import {validateOrderItems,buildItemsPayload,} from "@/helpers/order/orderHelpers";
+import {useCreateOrderForm} from "@/hooks/useCreateOrderForm";
 import CustomerInput from "@/components/order/CustomerInput";
 import OrderItemList from "@/components/order/OrderItemList";
 
-// ─── Style constants ───
+// ─── Shared input styles ─────────────────────────────────────────────
 const inputBase =
   "w-full rounded-input border bg-surface-elevated px-16 py-12 text-body-normal text-text-primary placeholder:text-text-muted outline-none transition-all duration-200";
 const inputOk =
@@ -19,11 +19,6 @@ const inputErr =
 const selectWrapper = "relative";
 const selectChevron =
   "pointer-events-none absolute right-12 top-1/2 -translate-y-1/2 text-text-muted";
-
-
-// ══════════════════════════════════════════════════════════════════════════════
-// COMPONENT
-// ══════════════════════════════════════════════════════════════════════════════
 
 /**
  * CreateOrder — full-page form for creating a new order.
@@ -36,47 +31,29 @@ const selectChevron =
 export default function CreateOrder() {
   const navigate = useNavigate();
 
-  // ═══ Data fetching ═══
+  // ─── Data fetching ──────────────────────────────────────────────
   const { data: existingCustomers = [] } = useGetAllCustomers();
   const { data: existingProducts = [] } = useGetAllProducts();
   const { data: existingBatches = [] } = useGetAllWarehouseBatches();
   const { data: existingSchools = [] } = useGetAllSchools();
 
-  // ═══ Mutations ═══
+  // ─── Mutations ──────────────────────────────────────────────────
   const { mutate: createCustomer, isPending: isCreatingCustomer } = useCreateCustomer();
   const { mutate: createOrder, isPending: isCreatingOrder } = useCreateOrder();
   const isPending = isCreatingCustomer || isCreatingOrder;
 
-  // ═══ Form ═══
+  // ─── RHF: form registration + validation ────────────────────────
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: yupResolver(orderRequestSchema),
     defaultValues: orderRequestDefaultValues,
     mode: "onBlur",
   });
 
-  // ═══ State ═══
-  // customerMode: true = existing selected, false = new (inline fields), null = nothing selected
-  const [customerMode, setCustomerMode] = useState(null);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [orderItems, setOrderItems] = useState([]);
+  // ─── Hook: state, computed values, handlers ───────────────────
+  const {customerMode, setCustomerMode, selectedCustomer, setSelectedCustomer, orderItems, totalAmount, balance,manageItem, manageMeasurement,
+  } = useCreateOrderForm({ watch, existingProducts, existingBatches });
 
-  // ═══ Item helpers ═══
-  const manageItem = createManageItem(orderItems, setOrderItems, existingProducts, existingBatches);
-  const manageMeasurement = createManageMeasurement(orderItems, setOrderItems);
-
-  // ═══ Derived values ═══
-  const totalAmount = useMemo(() => {
-    return orderItems.reduce((sum, item) => {
-      const price = parseFloat(item.unitPrice) || 0;
-      const qty = parseInt(item.quantity) || 0;
-      return sum + price * qty;
-    }, 0);
-  }, [orderItems]);
-  
-  const paidAmount = parseFloat(watch("paidAmount")) || 0;
-  const balance = totalAmount - paidAmount;
-
-  // ═══ Submit ═══
+  // ─── Functions: build payload ───────────────────────────────────
   const buildOrderPayload = (data, itemsPayload) => ({
     paidAmount: parseFloat(data.paidAmount),
     notes: data.notes || null,
@@ -84,18 +61,27 @@ export default function CreateOrder() {
     orderItems: itemsPayload,
   });
 
+  // ─── Functions: form submit ─────────────────────────────────────
   const handleFormSubmit = (data) => {
+    // ── Step 1: Validate all order items have required fields ────
     const error = validateOrderItems(orderItems);
     if (error) {
       alert(error);
       return;
     }
 
+    // ── Step 2: Transform items to backend format ────────────────
+    // Strips frontend-only fields (source, id), adds source-specific fields
     const itemsPayload = buildItemsPayload(orderItems);
+
+    // ── Step 3: Build full order payload ─────────────────────────
+    // Combines form fields (paidAmount, notes, schoolId) with items
     const orderPayload = buildOrderPayload(data, itemsPayload);
 
+    // ── Step 4: Submit ──────────────────────────────────────────
     // Backend requires customerId — create customer first if new
     if (customerMode === false || !data.customerId) {
+      // New customer: create customer first, then create order with returned customerId
       createCustomer(
         { customerName: data.customerName, phoneNumber: data.phoneNumber },
         {
@@ -112,6 +98,7 @@ export default function CreateOrder() {
         }
       );
     } else {
+      // Existing customer: create order directly with selected customerId
       createOrder(
         { ...orderPayload, customerId: data.customerId },
         {
@@ -122,6 +109,7 @@ export default function CreateOrder() {
     }
   };
 
+  // ─── Render ─────────────────────────────────────────────────────
   return (
     <div className="animate-fade-in">
       {/* Back link */}
@@ -142,11 +130,9 @@ export default function CreateOrder() {
       </div>
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-24">
-        {/* ═══ SECTION 1: Customer ═══ */}
+        {/* ── SECTION 1: Customer ──────────────────────────────── */}
         <div className="rounded-card bg-surface-default p-24 shadow-elevation-1">
-          <h2 className="mb-16 text-h4 font-semibold text-text-primary">
-            Customer
-          </h2>
+          <h2 className="mb-16 text-h4 font-semibold text-text-primary">Customer</h2>
           <CustomerInput
             register={register}
             setValue={setValue}
@@ -159,7 +145,7 @@ export default function CreateOrder() {
           />
         </div>
 
-        {/* ═══ SECTION 2: School (optional) ═══ */}
+        {/* ── SECTION 2: School (optional) ─────────────────────── */}
         <div className="rounded-card bg-surface-default p-24 shadow-elevation-1">
           <h2 className="mb-16 text-h4 font-semibold text-text-primary">
             School <span className="text-text-muted">(optional)</span>
@@ -171,16 +157,14 @@ export default function CreateOrder() {
             >
               <option value="">No school — general order</option>
               {existingSchools.map((school) => (
-                <option key={school.schoolId} value={school.schoolId}>
-                  {school.schoolName}
-                </option>
+                <option key={school.schoolId} value={school.schoolId}>{school.schoolName}</option>
               ))}
             </select>
             <ChevronDown className={selectChevron} />
           </div>
         </div>
 
-        {/* ═══ SECTION 3: Order Items ═══ */}
+        {/* ── SECTION 3: Order Items ───────────────────────────── */}
         <OrderItemList
           orderItems={orderItems}
           existingProducts={existingProducts}
@@ -189,11 +173,9 @@ export default function CreateOrder() {
           manageMeasurement={manageMeasurement}
         />
 
-        {/* ═══ SECTION 4: Payment & Collection ═══ */}
+        {/* ── SECTION 4: Payment & Collection ──────────────────── */}
         <div className="rounded-card bg-surface-default p-24 shadow-elevation-1">
-          <h2 className="mb-16 text-h4 font-semibold text-text-primary">
-            Payment &amp; Collection
-          </h2>
+          <h2 className="mb-16 text-h4 font-semibold text-text-primary">Payment &amp; Collection</h2>
           <div className="grid grid-cols-1 gap-16 md:grid-cols-3">
             {/* Paid Amount */}
             <div>
@@ -209,17 +191,13 @@ export default function CreateOrder() {
                 {...register("paidAmount")}
               />
               {errors.paidAmount && (
-                <p className="mt-4 text-body-small text-danger-main">
-                  {errors.paidAmount.message}
-                </p>
+                <p className="mt-4 text-body-small text-danger-main">{errors.paidAmount.message}</p>
               )}
             </div>
 
             {/* Balance preview */}
             <div>
-              <label className="mb-8 block text-ui-label font-semibold text-text-secondary">
-                Balance
-              </label>
+              <label className="mb-8 block text-ui-label font-semibold text-text-secondary">Balance</label>
               <div
                 className={`${inputBase} ${
                   balance > 0
@@ -248,22 +226,17 @@ export default function CreateOrder() {
           </div>
         </div>
 
-        {/* ═══ SECTION 5: Summary & Submit ═══ */}
+        {/* ── SECTION 5: Summary & Submit ──────────────────────── */}
         <div className="rounded-card bg-surface-default p-24 shadow-elevation-1">
           <div className="flex flex-col gap-16 md:flex-row md:items-center md:justify-between">
             {/* Total */}
             <div>
               <p className="text-body-small text-text-muted">Total Amount</p>
-              <p className="text-h3 font-bold text-text-primary">
-                ${totalAmount.toLocaleString()}
-              </p>
+              <p className="text-h3 font-bold text-text-primary">${totalAmount.toLocaleString()}</p>
               <p className="text-body-small text-text-muted">
                 {orderItems.length} item{orderItems.length !== 1 ? "s" : ""}
                 {balance > 0 && (
-                  <span className="text-danger-main">
-                    {" "}
-                    · ${balance.toLocaleString()} outstanding
-                  </span>
+                  <span className="text-danger-main"> · ${balance.toLocaleString()} outstanding</span>
                 )}
               </p>
             </div>
@@ -277,9 +250,7 @@ export default function CreateOrder() {
               {isPending ? (
                 <>
                   <Loader2 className="h-14 w-14 animate-spin" />
-                  {isCreatingCustomer
-                    ? "Creating customer..."
-                    : "Creating order..."}
+                  {isCreatingCustomer ? "Creating customer..." : "Creating order..."}
                 </>
               ) : (
                 "Create Order"

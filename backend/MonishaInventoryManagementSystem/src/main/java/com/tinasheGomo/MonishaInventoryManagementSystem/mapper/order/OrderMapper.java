@@ -44,6 +44,7 @@ public interface OrderMapper {
      */
     @Mapping(source = "customer.customerId", target = "customerId")
     @Mapping(source = "customer.customerName", target = "customerName")
+    @Mapping(source = "customer.phoneNumber", target = "customerPhone")
     @Mapping(source = "school.schoolId", target = "schoolId")
     @Mapping(source = "school.schoolName", target = "schoolName")
     OrderResponseDTO toResponse(OrderEntity order);

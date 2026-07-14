@@ -8,10 +8,16 @@ import OrderItemRow from "./OrderItemRow";
  * and maps through items rendering an OrderItemRow for each.
  * Receives all data and callbacks via props from CreateOrder.
  */
+
+// ─── Component ────────────────────────────────────────────────
+
 export default function OrderItemList({ orderItems, existingProducts, existingBatches, manageItem, manageMeasurement }) {
+
+  // ─── Render ───────────────────────────────────────────────────
   return (
     <div className="rounded-card bg-surface-default p-24 shadow-elevation-1">
-      {/* Header + Add button */}
+
+      {/* ── Header ─── */}
       <div className="mb-16 flex items-center justify-between">
         <h2 className="text-h4 font-semibold text-text-primary">Order Items</h2>
         <button
@@ -24,14 +30,14 @@ export default function OrderItemList({ orderItems, existingProducts, existingBa
         </button>
       </div>
 
-      {/* Empty state */}
+      {/* ── Empty State ─── */}
       {orderItems.length === 0 && (
         <p className="rounded-input border border-dashed border-border-default bg-surface-elevated/50 p-16 text-center text-body-small text-text-muted">
           No items added yet. Click Add Item to begin.
         </p>
       )}
 
-      {/* Item rows */}
+      {/* ── Item Rows ─── */}
       <div className="space-y-16">
         {orderItems.map((item, index) => (
           <OrderItemRow

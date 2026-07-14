@@ -39,4 +39,6 @@ public class WarehouseBatchResponseDTO {
     private List<WarehouseBatchSizeResponseDTO> batchSizes;
 
     private List<ProductResponseDTO> products;
+
+    private LocalDateTime depletedAt;
 }

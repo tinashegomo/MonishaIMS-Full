@@ -6,8 +6,6 @@ import com.tinasheGomo.MonishaInventoryManagementSystem.enums.OrderStatus;
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.order.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,44 +20,39 @@ public class OrderController {
 
     // POST /api/orders
     @PostMapping("/create-order")
-    public ResponseEntity<OrderResponseDTO> createOrder(
+    public OrderResponseDTO createOrder(
             @Valid @RequestBody OrderRequestDTO requestDTO) {
-        OrderResponseDTO response = orderService.createOrder(requestDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return orderService.createOrder(requestDTO);
     }
 
     // GET /api/orders
     @GetMapping("/get-all-orders")
-    public ResponseEntity<List<OrderResponseDTO>> getAllOrders() {
-        List<OrderResponseDTO> response = orderService.getAllOrders();
-        return ResponseEntity.ok(response);
+    public List<OrderResponseDTO> getAllOrders() {
+        return orderService.getAllOrders();
     }
 
     // GET /api/orders/{orderId}
     @GetMapping("/get-order-byId/{orderId}")
-    public ResponseEntity<OrderResponseDTO> getOrderById(
+    public OrderResponseDTO getOrderById(
             @PathVariable UUID orderId) {
-        OrderResponseDTO response = orderService.getOrderById(orderId);
-        return ResponseEntity.ok(response);
+        return orderService.getOrderById(orderId);
     }
 
     // GET /api/orders/status/{status}
     // Example: GET /api/orders/status/PENDING
     @GetMapping("/get-order-byStatus/{status}")
-    public ResponseEntity<List<OrderResponseDTO>> getOrdersByStatus(
+    public List<OrderResponseDTO> getOrdersByStatus(
             @PathVariable OrderStatus status) {
-        List<OrderResponseDTO> response = orderService.getOrdersByStatus(status);
-        return ResponseEntity.ok(response);
+        return orderService.getOrdersByStatus(status);
     }
 
     // PATCH /api/orders/{orderId}/status
     // Used by staff to move an order through its lifecycle
     // Example: mark IN_PRODUCTION → READY_FOR_COLLECTION when tailoring is done
     @PatchMapping("/update-order-status/{orderId}")
-    public ResponseEntity<OrderResponseDTO> updateOrderStatus(
+    public OrderResponseDTO updateOrderStatus(
             @PathVariable UUID orderId,
             @RequestParam OrderStatus status) {
-        OrderResponseDTO response = orderService.updateOrderStatus(orderId, status);
-        return ResponseEntity.ok(response);
+        return orderService.updateOrderStatus(orderId, status);
     }
 }

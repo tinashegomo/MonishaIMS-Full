@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { Plus, Pencil, Trash2, GraduationCap, Loader2 } from "lucide-react";
 import {
   useGetAllSchools,
@@ -7,15 +9,24 @@ import {
   useDeleteSchool,
   useGetCurrentUser,
 } from "@/hooks/InventoryHooks";
-import { SchoolModal } from "@/components/school/SchoolModal";
+import Modal from "@/components/shared/Modal";
+import { schoolRequestSchema, schoolRequestDefaultValues } from "@/yupSchema/school/SchoolRequestDTO";
+import { formatDate } from "@/utils/dateUtils";
+
+const inputBase =
+  "w-full rounded-input border bg-surface-elevated px-16 py-12 text-body-normal text-text-primary placeholder:text-text-muted outline-none transition-all duration-200";
+const inputOk =
+  "border-border-default focus:border-border-focus focus-ring";
+const inputErr =
+  "border-danger-main focus:border-danger-hover focus:ring-2 focus:ring-danger-bg";
 
 export default function SchoolsPage() {
-  // --- Modal state ---
+  // ─── State ─────────────────────────────────────────────────────
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
-  // --- Data & mutations ---
+  // ─── Data & Mutations ──────────────────────────────────────────
   const { data: user } = useGetCurrentUser();
   const { data: schools = [], isLoading, isError } = useGetAllSchools();
 
@@ -23,7 +34,13 @@ export default function SchoolsPage() {
   const { mutate: updateSchool, isPending: isUpdating, error: updateError } = useUpdateSchool();
   const { mutate: deleteSchool, isPending: isDeleting } = useDeleteSchool();
 
-  // --- Handlers ---
+  // Sort schools by createdAt descending (most recent first)
+  const sortedSchools = useMemo(() => {
+    if (!schools) return [];
+    return [...schools].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [schools]);
+
+  // ─── Functions ─────────────────────────────────────────────────
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedSchool(null);
@@ -61,9 +78,11 @@ export default function SchoolsPage() {
     });
   };
 
-  // --- Render ---
+  // ─── Render ────────────────────────────────────────────────────
   return (
     <div className="animate-fade-in mx-auto max-w-7xl">
+
+      {/* ── Header ──────────────────────────────────────────────── */}
       <div className="mb-32 flex flex-col gap-16 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-h2 font-bold text-text-primary">Schools</h1>
@@ -82,6 +101,7 @@ export default function SchoolsPage() {
         )}
       </div>
 
+      {/* ── Content ─────────────────────────────────────────────── */}
       {isLoading ? (
         <div className="flex min-h-[400px] flex-col items-center justify-center gap-16 rounded-card bg-surface-default shadow-elevation-1 animate-fade-in">
           <Loader2 className="h-32 w-32 animate-spin text-brand-primary" />
@@ -91,7 +111,7 @@ export default function SchoolsPage() {
         <div className="rounded-card bg-surface-default p-24 text-center text-body-normal text-danger-main animate-fade-in">
           Failed to load schools. Please refresh the page.
         </div>
-      ) : schools.length === 0 ? (
+      ) : sortedSchools.length === 0 ? (
         <div className="flex min-h-[400px] flex-col items-center justify-center rounded-card bg-surface-default p-32 shadow-elevation-1 text-center animate-fade-in">
           <div className="mb-16 flex h-64 w-64 items-center justify-center rounded-full bg-brand-tint">
             <GraduationCap className="h-32 w-32 text-brand-primary" />
@@ -129,7 +149,7 @@ export default function SchoolsPage() {
               </tr>
             </thead>
             <tbody>
-              {schools.map((school, index) => (
+              {sortedSchools.map((school, index) => (
                 <tr
                   key={school.schoolId}
                   className="border-b border-border-default/50 last:border-0 hover:bg-surface-muted/40 transition-colors duration-150"
@@ -139,11 +159,7 @@ export default function SchoolsPage() {
                     {school.schoolName}
                   </td>
                   <td className="w-40 px-6 py-4 text-xs text-text-muted whitespace-nowrap">
-                    {new Date(school.createdAt).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {formatDate(school.createdAt)}
                   </td>
                   <td className="w-28 px-6 py-4 text-right whitespace-nowrap">
                     <button
@@ -173,7 +189,7 @@ export default function SchoolsPage() {
         </div>
       )}
 
-      {/* Mutation error banners */}
+      {/* ── Mutation Errors ─────────────────────────────────────── */}
       {createError && (
         <div className="mt-16 rounded-input border border-danger-main bg-danger-bg px-16 py-12 text-body-normal text-danger-main animate-fade-in">
           {createError.response?.data?.message || "Failed to create school. Please try again."}
@@ -185,14 +201,76 @@ export default function SchoolsPage() {
         </div>
       )}
 
-      <SchoolModal
-        key={selectedSchool?.schoolId ?? "create"}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={selectedSchool ? handleUpdate : handleCreate}
-        isPending={selectedSchool ? isUpdating : isCreating}
-        school={selectedSchool}
-      />
+      {/* ── Create / Edit Modal ─────────────────────────────────── */}
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
+
+        <Modal.Header onClose={handleCloseModal}>
+          {selectedSchool ? "Edit School" : "Create School"}
+        </Modal.Header>
+
+        <Modal.Body>
+          <SchoolForm
+            school={selectedSchool}
+            onSubmit={selectedSchool ? handleUpdate : handleCreate}
+            onCancel={handleCloseModal}
+            isPending={selectedSchool ? isUpdating : isCreating}
+          />
+        </Modal.Body>
+
+      </Modal>
     </div>
+  );
+}
+
+// ─── Inline School Form ──────────────────────────────────────
+function SchoolForm({ school, onSubmit, onCancel, isPending }) {
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: yupResolver(schoolRequestSchema),
+    defaultValues: school ? { schoolName: school.schoolName } : schoolRequestDefaultValues,
+    mode: "onBlur",
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-20">
+      <div>
+        <label className="mb-8 block text-ui-label font-semibold text-text-secondary">
+          School Name
+        </label>
+        <input
+          type="text"
+          placeholder="e.g. Zimuto High School"
+          aria-invalid={errors.schoolName ? "true" : "false"}
+          className={`${inputBase} ${errors.schoolName ? inputErr : inputOk}`}
+          {...register("schoolName")}
+        />
+        {errors.schoolName && (
+          <p className="mt-4 text-body-small text-danger-main">{errors.schoolName.message}</p>
+        )}
+      </div>
+
+      <div className="flex items-center justify-end gap-12 pt-4">
+        <button
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); onCancel(); }}
+          className="rounded-input border border-border-default px-14 py-8 text-sm font-medium text-text-secondary hover:bg-surface-muted transition-all duration-200 press-scale"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          onMouseDown={(e) => e.preventDefault()}
+          disabled={isPending}
+          className="inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-14 py-8 text-sm font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed disabled:cursor-not-allowed disabled:opacity-60 press-scale transition-all duration-200"
+        >
+          {isPending ? (
+            <><Loader2 className="h-16 w-16 animate-spin" />{school ? "Saving..." : "Creating..."}</>
+          ) : school ? (
+            "Save Changes"
+          ) : (
+            "Create School"
+          )}
+        </button>
+      </div>
+    </form>
   );
 }

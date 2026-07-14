@@ -1,48 +1,56 @@
-import { useState } from "react";
-import { Scissors, CheckCircle, Loader2, Package } from "lucide-react";
+import { useState, useMemo, Fragment } from "react";
+import { useNavigate } from "react-router-dom";
+import { Scissors, Eye, MoreVertical, Loader2 } from "lucide-react";
 import { useGetOrdersByStatus, useUpdateOrderStatus } from "@/hooks/InventoryHooks";
+import { STATUS_TRANSITIONS } from "@/utils/statusUtils";
+import { formatDate } from "@/utils/dateUtils";
 
-/**
- * Tailoring — lists orders with status IN_PRODUCTION.
- * Tailors can view details, measurements, and mark orders as ready for collection.
- */
 export default function Tailoring() {
-  const [updatingId, setUpdatingId] = useState(null);
-
-  // --- Data & mutations ---
+  const navigate = useNavigate();
   const { data: orders = [], isLoading, isError } = useGetOrdersByStatus("IN_PRODUCTION");
   const { mutate: updateOrderStatus } = useUpdateOrderStatus();
+  const [openMenu, setOpenMenu] = useState(null);
 
-  // --- Handlers ---
-  const handleMarkReady = (orderId) => {
-    setUpdatingId(orderId);
-    updateOrderStatus(
-      { orderId, status: "READY_FOR_COLLECTION" },
-      { onSettled: () => setUpdatingId(null) }
-    );
+  const sortedOrders = useMemo(() => {
+    if (!orders) return [];
+    return [...orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [orders]);
+
+  const handleStatusChange = (orderId, newStatus) => {
+    updateOrderStatus({ orderId, status: newStatus });
+    setOpenMenu(null);
   };
 
-  // --- Render ---
   return (
-    <div className="animate-fade-in">
-      {/* Page header */}
-      <div className="mb-32">
-        <h1 className="text-h2 font-bold text-text-primary">Tailoring</h1>
-        <p className="mt-8 text-body-normal text-text-secondary">
-          Orders currently in production
-        </p>
+    <div className="animate-fade-in mx-auto max-w-7xl">
+
+      {/* ── Page Header ─── */}
+      <div className="mb-32 flex flex-col gap-16 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-h2 font-bold text-text-primary">Tailoring</h1>
+          <p className="mt-8 text-body-normal text-text-secondary">
+            Orders currently in production
+          </p>
+        </div>
       </div>
 
-      {isLoading ? (
+      {/* ── Error Banner ─── */}
+      {isError && (
+        <div className="mb-20 rounded-input border border-danger-main bg-danger-bg px-16 py-12 text-body-normal text-danger-main animate-fade-in">
+          Failed to load orders. Please refresh the page.
+        </div>
+      )}
+
+      {/* ── Loading State ─── */}
+      {isLoading && (
         <div className="flex min-h-[400px] flex-col items-center justify-center gap-16 rounded-card bg-surface-default shadow-elevation-1 animate-fade-in">
           <Loader2 className="h-32 w-32 animate-spin text-brand-primary" />
           <p className="text-body-normal text-text-secondary">Loading tailoring orders...</p>
         </div>
-      ) : isError ? (
-        <div className="rounded-input border border-danger-main bg-danger-bg px-16 py-12 text-body-normal text-danger-main animate-fade-in">
-          Failed to load orders. Please refresh the page.
-        </div>
-      ) : orders.length === 0 ? (
+      )}
+
+      {/* ── Empty State ─── */}
+      {!isLoading && !isError && sortedOrders.length === 0 && (
         <div className="flex min-h-[400px] flex-col items-center justify-center rounded-card bg-surface-default p-32 shadow-elevation-1 text-center animate-fade-in">
           <div className="mb-16 flex h-64 w-64 items-center justify-center rounded-full bg-brand-tint">
             <Scissors className="h-32 w-32 text-brand-primary" />
@@ -54,142 +62,124 @@ export default function Tailoring() {
             Custom orders will appear here when created.
           </p>
         </div>
-      ) : (
-        <div className="space-y-20">
-          {orders.map((order, index) => {
-            const isUpdating = updatingId === order.orderId;
-            const customItems = order.orderItems.filter((item) => item.customMade);
+      )}
 
-            return (
-              <div
-                key={order.orderId}
-                className="rounded-card bg-surface-default p-24 shadow-elevation-1 hover-lift animate-slide-up"
-                style={{ animationDelay: `${index * 80}ms` }}
-              >
-                {/* Order header */}
-                <div className="mb-16 flex items-start justify-between">
-                  <div>
-                    <p className="text-ui-caption text-text-muted">Order Number</p>
-                    <p className="text-body-normal font-semibold text-text-primary">
-                      {order.orderNumber}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-ui-caption text-text-muted">Customer</p>
-                    <p className="text-body-normal font-medium text-text-primary">
-                      {order.customerName}
-                    </p>
-                  </div>
-                </div>
+      {/* ── Tailoring Orders Table ─── */}
+      {!isLoading && sortedOrders.length > 0 && (
+        <div className="w-full rounded-card bg-surface-default">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border-default">
+                <th className="min-w-[120px] px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">Order #</th>
+                <th className="min-w-[160px] px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">Customer</th>
+                <th className="min-w-[120px] px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">Items</th>
+                <th className="min-w-[120px] px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">Measurements</th>
+                <th className="w-28 px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-muted">Total</th>
+                <th className="w-28 px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-muted">Balance</th>
+                <th className="w-36 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted whitespace-nowrap">Date</th>
+                <th className="w-20 px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-muted">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedOrders.map((order, index) => {
+                const customItems = order.orderItems.filter((item) => item.customMade);
+                const hasMeasurements = customItems.some((item) => item.measurements?.length > 0);
 
-                {/* Custom items */}
-                <div className="mb-16">
-                  <p className="mb-10 text-ui-label font-semibold text-text-secondary">
-                    Custom Items ({customItems.length})
-                  </p>
-                  <div className="space-y-10">
-                    {customItems.map((item) => (
-                      <div
-                        key={item.orderItemId}
-                        className="flex items-center justify-between rounded-input border border-border-default bg-surface-elevated/50 px-16 py-12"
-                      >
-                        <div className="flex items-center gap-12">
-                          <div className="flex h-32 w-32 items-center justify-center rounded-full bg-brand-tint">
-                            <Package className="h-16 w-16 text-brand-primary" />
-                          </div>
-                          <div>
-                            <p className="text-body-normal font-medium text-text-primary">
-                              {item.type} — {item.variant}
-                            </p>
-                            <p className="text-body-small text-text-muted">
-                              {item.color} · Size {item.size} · Qty {item.quantity}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="text-body-normal font-medium text-text-primary">
-                          ${(item.unitPrice * item.quantity).toLocaleString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Measurements */}
-                {customItems.some((item) => item.measurements?.length > 0) && (
-                  <div className="mb-16">
-                    <p className="mb-10 text-ui-label font-semibold text-text-secondary">
-                      Measurements
-                    </p>
-                    <div className="rounded-input border border-border-default bg-surface-elevated/30 px-16 py-12">
-                      {customItems.map((item) =>
-                        item.measurements?.map((m) => (
-                          <div
-                            key={m.measurementId}
-                            className="flex items-center justify-between border-b border-border-default last:border-0 py-8"
-                          >
-                            <span className="text-body-normal text-text-secondary">
-                              {m.measurementName}
-                            </span>
-                            <span className="text-body-normal font-medium text-text-primary">
-                              {m.measurementValue}
-                            </span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Order info footer */}
-                <div className="flex flex-col gap-16 sm:flex-row sm:items-center sm:justify-between border-t border-border-default pt-16">
-                  <div className="flex items-center gap-24">
-                    <div>
-                      <p className="text-ui-caption text-text-muted">Total</p>
-                      <p className="text-body-normal font-semibold text-text-primary">
-                        ${order.totalAmount?.toLocaleString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-ui-caption text-text-muted">Balance</p>
-                      <p className={`text-body-normal font-semibold ${order.balance > 0 ? "text-danger-main" : "text-success-main"}`}>
-                        ${order.balance?.toLocaleString()}
-                      </p>
-                    </div>
-                    {order.collectionDate && (
-                      <div>
-                        <p className="text-ui-caption text-text-muted">Collection</p>
-                        <p className="text-body-normal font-medium text-text-primary">
-                          {new Date(order.collectionDate).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => handleMarkReady(order.orderId)}
-                    disabled={isUpdating}
-                    className="inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-14 py-8 text-sm font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed disabled:cursor-not-allowed disabled:opacity-60 press-scale transition-all duration-200"
+                return (
+                  <tr
+                    key={order.orderId}
+                    className="border-b border-border-default/50 last:border-b-0 hover:bg-surface-muted/40 transition-colors duration-150"
+                    style={{ animationDelay: `${index * 30}ms` }}
                   >
-                    {isUpdating ? (
-                      <>
-                        <Loader2 className="h-16 w-16 animate-spin" />
-                        Updating...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="h-16 w-16" />
-                        Mark Ready
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                    <td className="min-w-[120px] px-6 py-4 font-medium text-text-primary whitespace-nowrap">
+                      {order.orderNumber}
+                    </td>
+                    <td className="min-w-[160px] px-6 py-4 text-text-secondary whitespace-nowrap truncate">
+                      {order.customerName}
+                    </td>
+                    <td className="min-w-[120px] px-6 py-4 text-text-secondary whitespace-nowrap">
+                      {customItems.length} custom
+                    </td>
+                    <td className="min-w-[120px] px-6 py-4 text-text-secondary whitespace-nowrap">
+                      {hasMeasurements ? (
+                        <span className="text-success-main font-medium">Yes</span>
+                      ) : (
+                        <span className="text-text-muted">None</span>
+                      )}
+                    </td>
+                    <td className="w-28 px-6 py-4 text-text-primary text-right whitespace-nowrap tabular-nums">
+                      ${order.totalAmount?.toLocaleString()}
+                    </td>
+                    <td className={`w-28 px-6 py-4 text-right whitespace-nowrap tabular-nums font-medium ${order.balance > 0 ? "text-danger-main" : "text-success-main"}`}>
+                      ${order.balance?.toLocaleString()}
+                    </td>
+                    <td className="w-36 px-6 py-4 text-xs text-text-muted whitespace-nowrap">
+                      {formatDate(order.createdAt)}
+                    </td>
+                    <td className="w-20 px-6 py-4 text-right whitespace-nowrap">
+                      <div
+                        className="relative flex items-center justify-end gap-4"
+                        tabIndex={-1}
+                        onBlur={(e) => {
+                          if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) {
+                            setOpenMenu(null);
+                          }
+                        }}
+                      >
+                        <button
+                          onClick={() => navigate(`/orders/${order.orderId}`)}
+                          className="rounded-full p-5 text-text-muted hover:bg-brand-subtle hover:text-brand-primary transition-all duration-200 press-scale"
+                          aria-label={`View ${order.orderNumber}`}
+                        >
+                          <Eye className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => setOpenMenu(openMenu === order.orderId ? null : order.orderId)}
+                          className="rounded-full p-5 text-text-muted hover:bg-surface-muted hover:text-text-primary transition-all duration-200 press-scale"
+                          aria-label="Actions"
+                        >
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
+
+                        {/* Dropdown — absolute inside the relative container */}
+                        {openMenu === order.orderId && (
+                          <div className="absolute right-0 top-full mt-2 z-10 w-56 whitespace-nowrap rounded-input border border-border-default bg-surface-default py-4 shadow-elevation-2 animate-scale-in">
+                            {(() => {
+                              const transitions = STATUS_TRANSITIONS[order.orderStatus] || [];
+                              if (transitions.length === 0) {
+                                return <p className="px-16 py-8 text-body-small leading-none text-text-muted">No actions available</p>;
+                              }
+                              return transitions.map((t, i) => (
+                                <Fragment key={t.status}>
+                                  {t.status === "CANCELLED" && i > 0 && (
+                                    <div className="my-2 border-t border-border-default" />
+                                  )}
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      handleStatusChange(order.orderId, t.status);
+                                    }}
+                                    className={`flex w-full items-center gap-8 px-16 py-8 text-left text-body-small leading-none transition-colors ${
+                                      t.status === "CANCELLED"
+                                        ? "text-danger-main hover:bg-danger-bg"
+                                        : "text-text-primary hover:bg-surface-muted"
+                                    }`}
+                                  >
+                                    {t.label}
+                                  </button>
+                                </Fragment>
+                              ));
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

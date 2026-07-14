@@ -1,6 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Loader2, ArrowLeft, User, Mail, Phone, Shield, Calendar, Package, Warehouse } from "lucide-react";
 import { useGetUserActivity } from "@/hooks/InventoryHooks";
+import { formatDate } from "@/utils/dateUtils";
+import { STATUS_COLORS } from "@/utils/statusUtils";
+
+// ─── Constants ─────────────────────────────────────────────────
 
 const ROLE_COLORS = {
   ADMIN: "bg-purple-50 text-purple-600",
@@ -8,23 +12,14 @@ const ROLE_COLORS = {
   USER: "bg-gray-100 text-gray-600",
 };
 
-const STATUS_COLORS = {
-  PENDING: "bg-gray-100 text-gray-600",
-  IN_PRODUCTION: "bg-amber-50 text-amber-600",
-  READY_FOR_COLLECTION: "bg-blue-50 text-blue-600",
-  COMPLETED: "bg-emerald-50 text-emerald-600",
-  CANCELLED: "bg-red-50 text-red-600",
-};
-
-function formatDate(d) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
+// ─── Component ─────────────────────────────────────────────────
 
 export default function UserDetails() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const { data: activity, isLoading, isError, error } = useGetUserActivity(userId);
+
+// ─── Render ────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -59,6 +54,7 @@ export default function UserDetails() {
 
   return (
     <div className="animate-fade-in mx-auto max-w-4xl">
+      {/* ── Back Navigation ─── */}
       <button
         onClick={() => navigate("/admin/users")}
         className="mb-24 inline-flex items-center gap-8 text-body-small font-medium text-text-secondary hover:text-text-primary transition-colors"
@@ -67,7 +63,7 @@ export default function UserDetails() {
         Back to Users
       </button>
 
-      {/* User Info Card */}
+      {/* ── User Info Card ─── */}
       <div className="rounded-card bg-surface-default p-24 md:p-32 shadow-elevation-1 mb-24">
         <div className="flex flex-col items-center gap-16 sm:flex-row sm:items-start">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-primary text-neutral-0 shadow-elevation-2">
@@ -127,7 +123,7 @@ export default function UserDetails() {
         </div>
       </div>
 
-      {/* Activity Summary */}
+      {/* ── Activity Summary ─── */}
       <div className="rounded-card bg-surface-default p-24 md:p-32 shadow-elevation-1 mb-24">
         <h2 className="text-h4 font-semibold text-text-primary mb-20">Activity Summary</h2>
         <div className="grid gap-16 sm:grid-cols-3">
@@ -146,7 +142,7 @@ export default function UserDetails() {
         </div>
       </div>
 
-      {/* Recent Orders */}
+      {/* ── Recent Orders ─── */}
       <div className="rounded-card bg-surface-default p-24 md:p-32 shadow-elevation-1 mb-24">
         <h2 className="text-h4 font-semibold text-text-primary mb-20">Recent Orders</h2>
         {activity?.recentOrders && activity.recentOrders.length > 0 ? (
@@ -161,7 +157,7 @@ export default function UserDetails() {
                   <p className="text-[11px] text-text-muted truncate">{order.customerName}</p>
                 </div>
                 <div className="flex items-center gap-10 shrink-0 ml-12">
-                  <span className={`inline-block rounded-full px-8 py-3 text-[10px] font-medium ${STATUS_COLORS[order.orderStatus] || "bg-gray-100 text-gray-600"}`}>
+                  <span className={`text-[10px] font-medium whitespace-nowrap ${STATUS_COLORS[order.orderStatus] || "text-gray-600"}`}>
                     {order.orderStatus?.replace(/_/g, " ")}
                   </span>
                   <span className="text-[11px] text-text-muted whitespace-nowrap tabular-nums">
@@ -177,7 +173,7 @@ export default function UserDetails() {
         )}
       </div>
 
-      {/* Recent Products */}
+      {/* ── Recent Products ─── */}
       <div className="rounded-card bg-surface-default p-24 md:p-32 shadow-elevation-1 mb-24">
         <h2 className="text-h4 font-semibold text-text-primary mb-20">Recent Products</h2>
         {activity?.recentProducts && activity.recentProducts.length > 0 ? (
@@ -208,7 +204,7 @@ export default function UserDetails() {
         )}
       </div>
 
-      {/* Recent Batches */}
+      {/* ── Recent Batches ─── */}
       <div className="rounded-card bg-surface-default p-24 md:p-32 shadow-elevation-1">
         <h2 className="text-h4 font-semibold text-text-primary mb-20">Recent Batches</h2>
         {activity?.recentBatches && activity.recentBatches.length > 0 ? (

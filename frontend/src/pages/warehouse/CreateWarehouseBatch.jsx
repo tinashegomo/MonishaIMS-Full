@@ -11,12 +11,17 @@ import { WarehouseForm } from "@/components/warehouse/WarehouseForm";
  * into a single payload with batchSizes, then sends to backend.
  * On success navigates back to warehouse list.
  */
+
+// ─── State / Hooks ─────────────────────────────────────────────
+
 const CreateWarehouseBatchPage = () => {
   const navigate = useNavigate();
 
   const { data: warehouseBatches = [] } = useGetAllWarehouseBatches();
 
   const { mutate: createBatch, isPending: isCreatingBatch } = useCreateWarehouseBatch();
+
+// ─── Functions ─────────────────────────────────────────────────
 
   const handleCreate = (data, sizes) => {
     const payload = { ...data, batchSizes: sizes };
@@ -31,8 +36,11 @@ const CreateWarehouseBatchPage = () => {
     });
   };
 
+// ─── Render ────────────────────────────────────────────────────
+
   return (
     <div className="animate-fade-in">
+      {/* ── Back Navigation ─── */}
       <Link
         to="/warehouse"
         className="mb-20 inline-flex items-center gap-8 text-body-normal font-medium text-text-secondary hover:text-brand-primary transition-colors duration-200"
@@ -41,6 +49,7 @@ const CreateWarehouseBatchPage = () => {
         Back to Warehouse
       </Link>
 
+      {/* ── Page Header ─── */}
       <div className="mb-32">
         <h1 className="text-h2 font-bold text-text-primary">Create Batch</h1>
         <p className="mt-8 text-body-normal text-text-secondary">
@@ -48,6 +57,7 @@ const CreateWarehouseBatchPage = () => {
         </p>
       </div>
 
+      {/* ── Form ─── */}
       <div className="rounded-card bg-surface-default p-24 md:p-32 shadow-elevation-1">
         <WarehouseForm
           onSubmit={handleCreate}

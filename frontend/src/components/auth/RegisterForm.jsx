@@ -8,8 +8,10 @@ import {
 } from "@/yupSchema/auth/UserRequestDTO";
 
 export const RegisterForm = ({ handleRegister, isPending }) => {
+  // ─── State ────────────────────────────────────────────────────
   const [showPassword, setShowPassword] = useState(false);
 
+  // ─── Form Setup ───────────────────────────────────────────────
   const {
     register,
     handleSubmit,
@@ -20,6 +22,7 @@ export const RegisterForm = ({ handleRegister, isPending }) => {
     mode: "onBlur",
   });
 
+  // ─── Computed Styles ─────────────────────────────────────────
   const inputBase =
     "w-full rounded-input border bg-surface-elevated px-16 py-12 text-body-normal text-text-primary placeholder:text-text-muted outline-none transition-all duration-200";
   const inputOk =
@@ -27,8 +30,10 @@ export const RegisterForm = ({ handleRegister, isPending }) => {
   const inputErr =
     "border-danger-main focus:border-danger-main focus:ring-2 focus:ring-danger-main/20";
 
+  // ─── Render ───────────────────────────────────────────────────
   return (
     <form onSubmit={handleSubmit(handleRegister)} className="space-y-20">
+      {/* ── Username ──────────────────────────────────────────────── */}
       <div>
         <label className="mb-8 block text-ui-label font-semibold text-text-secondary">
           Username
@@ -48,6 +53,7 @@ export const RegisterForm = ({ handleRegister, isPending }) => {
         )}
       </div>
 
+      {/* ── Email ─────────────────────────────────────────────────── */}
       <div>
         <label className="mb-8 block text-ui-label font-semibold text-text-secondary">
           Email
@@ -67,6 +73,7 @@ export const RegisterForm = ({ handleRegister, isPending }) => {
         )}
       </div>
 
+      {/* ── Password ──────────────────────────────────────────────── */}
       <div>
         <label className="mb-8 block text-ui-label font-semibold text-text-secondary">
           Password
@@ -100,6 +107,7 @@ export const RegisterForm = ({ handleRegister, isPending }) => {
         )}
       </div>
 
+      {/* ── Phone Number ──────────────────────────────────────────── */}
       <div>
         <label className="mb-8 block text-ui-label font-semibold text-text-secondary">
           Phone Number
@@ -119,6 +127,7 @@ export const RegisterForm = ({ handleRegister, isPending }) => {
         )}
       </div>
 
+      {/* ── Submit Button ─────────────────────────────────────────── */}
       <button
         type="submit"
         disabled={isPending}

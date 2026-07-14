@@ -1,48 +1,17 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, ClipboardList, User, School, Calendar, Hash, Package, Ruler } from "lucide-react";
 import { useGetOrderById } from "@/hooks/InventoryHooks";
+import { formatDate, formatDateTime } from "@/utils/dateUtils";
+import { STATUS_COLORS } from "@/utils/statusUtils";
 
-function parseDate(dateStr) {
-  if (!dateStr) return null;
-  if (Array.isArray(dateStr)) {
-    return new Date(dateStr[0], dateStr[1] - 1, dateStr[2], dateStr[3] || 0, dateStr[4] || 0, dateStr[5] || 0);
-  }
-  return new Date(dateStr);
-}
-
-function formatDate(dateStr) {
-  const d = parseDate(dateStr);
-  if (!d) return "-";
-  return d.toLocaleDateString("en-ZW", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function formatDateTime(dateStr) {
-  const d = parseDate(dateStr);
-  if (!d) return "-";
-  return d.toLocaleDateString("en-ZW", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-const statusBadge = (status) => {
-  const variants = {
-    COMPLETED: "bg-success-bg text-success-main",
-    CANCELLED: "bg-danger-bg text-danger-main",
-    IN_PRODUCTION: "bg-warning-bg text-warning-main",
-    READY_FOR_COLLECTION: "bg-brand-subtle text-brand-primary",
-    PENDING: "bg-surface-muted text-text-secondary",
-  };
-  return variants[status] || variants.PENDING;
-};
+// ─── Component ─────────────────────────────────────────────────
 
 export default function OrderDetails() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { data: order, isLoading, isError, error } = useGetOrderById(orderId);
+
+// ─── Render ────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -74,7 +43,7 @@ export default function OrderDetails() {
 
   return (
     <div className="animate-fade-in mx-auto max-w-7xl">
-      {/* Header */}
+      {/* ── Header ─── */}
       <div className="mb-32">
         <button
           onClick={() => navigate("/orders")}
@@ -87,7 +56,7 @@ export default function OrderDetails() {
           <div>
             <h1 className="text-h2 font-bold text-text-primary">{order.orderNumber}</h1>
             <div className="mt-8 flex items-center gap-12">
-              <span className={`inline-flex items-center rounded-pill px-12 py-4 text-xs font-medium ${statusBadge(order.orderStatus)}`}>
+              <span className={`text-xs font-medium whitespace-nowrap ${STATUS_COLORS[order.orderStatus] || "text-gray-600"}`}>
                 {order.orderStatus?.replace(/_/g, " ")}
               </span>
               {order.schoolOrder && (
@@ -101,7 +70,7 @@ export default function OrderDetails() {
         </div>
       </div>
 
-      {/* Info Cards Row */}
+      {/* ── Info Cards Row ─── */}
       <div className="grid grid-cols-1 gap-16 md:grid-cols-2 mb-24">
         {/* Customer Info Card */}
         <div className="rounded-card bg-surface-default p-20 shadow-elevation-1">
@@ -113,6 +82,7 @@ export default function OrderDetails() {
           </div>
           <div className="space-y-12">
             <InfoRow label="Name" value={order.customerName} />
+            {order.customerPhone && <InfoRow label="Phone" value={order.customerPhone} />}
             {order.schoolName && <InfoRow label="School" value={order.schoolName} />}
             <InfoRow label="Collection Date" value={formatDate(order.collectionDate)} />
           </div>
@@ -139,7 +109,7 @@ export default function OrderDetails() {
         </div>
       </div>
 
-      {/* Order Items */}
+      {/* ── Order Items ─── */}
       {order.orderItems && order.orderItems.length > 0 && (
         <div className="rounded-card bg-surface-default p-20 shadow-elevation-1 mb-24">
           <div className="flex items-center gap-10 mb-16">
@@ -205,7 +175,7 @@ export default function OrderDetails() {
         </div>
       )}
 
-      {/* Measurements */}
+      {/* ── Measurements ─── */}
       {order.orderItems?.some(item => item.measurements && item.measurements.length > 0) && (
         <div className="rounded-card bg-surface-default p-20 shadow-elevation-1 mb-24">
           <div className="flex items-center gap-10 mb-16">
@@ -244,7 +214,7 @@ export default function OrderDetails() {
         </div>
       )}
 
-      {/* Notes */}
+      {/* ── Notes ─── */}
       {order.notes && (
         <div className="rounded-card bg-surface-default p-20 shadow-elevation-1 mb-24">
           <h2 className="text-lg font-semibold text-text-primary mb-12">Notes</h2>
@@ -252,7 +222,7 @@ export default function OrderDetails() {
         </div>
       )}
 
-      {/* Metadata */}
+      {/* ── Metadata ─── */}
       <div className="rounded-card bg-surface-default p-20 shadow-elevation-1">
         <div className="flex items-center gap-10 mb-16">
           <div className="flex h-40 w-40 items-center justify-center rounded-full bg-slate-50">
@@ -287,6 +257,8 @@ export default function OrderDetails() {
     </div>
   );
 }
+
+// ─── Sub-Components ────────────────────────────────────────────
 
 function InfoRow({ label, value, icon, mono }) {
   return (

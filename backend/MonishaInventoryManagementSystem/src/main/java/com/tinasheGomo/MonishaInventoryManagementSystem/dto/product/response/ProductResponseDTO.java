@@ -44,4 +44,6 @@ public class ProductResponseDTO {
     private LocalDateTime updatedAt;
 
     private List<ProductSizeResponseDTO> productSizes;
+
+    private LocalDateTime depletedAt;
 }

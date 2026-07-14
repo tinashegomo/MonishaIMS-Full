@@ -1,17 +1,23 @@
 package com.tinasheGomo.MonishaInventoryManagementSystem.service.warehouse;
 
+import com.tinasheGomo.MonishaInventoryManagementSystem.dto.shared.SizeQuantityDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.warehouse.request.WarehouseBatchSizeRequestDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.warehouse.response.WarehouseBatchSizeResponseDTO;
+import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.DepletedHistoryEntity;
+import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.RestockHistoryEntity;
 import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.WarehouseBatchEntity;
 import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.WarehouseBatchSizeEntity;
 import com.tinasheGomo.MonishaInventoryManagementSystem.exception.exceptions.NotFoundException;
 import com.tinasheGomo.MonishaInventoryManagementSystem.mapper.warehouse.WarehouseBatchSizeMapper;
+import com.tinasheGomo.MonishaInventoryManagementSystem.repository.warehouse.DepletedHistoryRepository;
+import com.tinasheGomo.MonishaInventoryManagementSystem.repository.warehouse.RestockHistoryRepository;
 import com.tinasheGomo.MonishaInventoryManagementSystem.repository.warehouse.WarehouseBatchRepository;
 import com.tinasheGomo.MonishaInventoryManagementSystem.repository.warehouse.WarehouseBatchSizeRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +29,8 @@ public class WarehouseBatchSizeService {
     private final WarehouseBatchSizeRepository batchSizeRepository;
     private final WarehouseBatchRepository batchRepository;
     private final WarehouseBatchSizeMapper batchSizeMapper;
+    private final RestockHistoryRepository restockHistoryRepository;
+    private final DepletedHistoryRepository depletedHistoryRepository;
 
     /**
      * ADD SIZES TO BATCH
@@ -105,6 +113,50 @@ public class WarehouseBatchSizeService {
 
         batch.setTotalQuantity(totalQuantity);
 
+        // Auto-detect depletion
+        if (totalQuantity == 0 && batch.getDepletedAt() == null) {
+            batch.setDepletedAt(LocalDateTime.now());
+        }
+
         batchRepository.save(batch);
+
+        // Record depletion history
+        if (totalQuantity == 0) {
+            DepletedHistoryEntity depletedHistory = new DepletedHistoryEntity();
+            depletedHistory.setBatchId(batchId);
+            depletedHistoryRepository.save(depletedHistory);
+        }
+    }
+
+    /**
+     * Restock batch sizes and record history
+     */
+    @Transactional
+    public void restockBatchSizes(WarehouseBatchEntity batch, List<SizeQuantityDTO> restockItems, String restockedBy) {
+
+        for (SizeQuantityDTO item : restockItems) {
+            WarehouseBatchSizeEntity existingSize = batchSizeRepository
+                    .findByBatch_BatchIdAndSize(batch.getBatchId(), item.getSize())
+                    .orElse(null);
+
+            if (existingSize != null) {
+                existingSize.setQuantity(existingSize.getQuantity() + item.getQuantity());
+                batchSizeRepository.save(existingSize);
+            } else {
+                WarehouseBatchSizeEntity newSize = new WarehouseBatchSizeEntity();
+                newSize.setBatch(batch);
+                newSize.setSize(item.getSize());
+                newSize.setQuantity(item.getQuantity());
+                batchSizeRepository.save(newSize);
+            }
+
+            // Record restock history
+            RestockHistoryEntity history = new RestockHistoryEntity();
+            history.setBatchId(batch.getBatchId());
+            history.setSize(item.getSize());
+            history.setQuantityAdded(item.getQuantity());
+            history.setRestockedBy(restockedBy);
+            restockHistoryRepository.save(history);
+        }
     }
 }

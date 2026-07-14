@@ -1,64 +1,42 @@
-import { useState, useRef, useEffect, Fragment } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Loader2, ClipboardList, Eye, MoreVertical } from "lucide-react";
+import { Plus, Loader2, ClipboardList, Eye, MoreVertical, FileSpreadsheet, FileText } from "lucide-react";
 import { useGetAllOrders, useUpdateOrderStatus } from "@/hooks/InventoryHooks";
+import { STATUS_TRANSITIONS, STATUS_COLORS } from "@/utils/statusUtils";
+import { formatDate } from "@/utils/dateUtils";
+import { exportToExcel, exportToPDF } from "@/utils/exportUtils";
 
-const STATUS_TRANSITIONS = {
-  PENDING: [
-    { status: "READY_FOR_COLLECTION", label: "Ready for Collection" },
-    { status: "CANCELLED", label: "Cancel Order" },
-  ],
-  IN_PRODUCTION: [
-    { status: "READY_FOR_COLLECTION", label: "Ready for Collection" },
-    { status: "CANCELLED", label: "Cancel Order" },
-  ],
-  READY_FOR_COLLECTION: [
-    { status: "COMPLETED", label: "Mark Collected" },
-    { status: "CANCELLED", label: "Cancel Order" },
-  ],
-  COMPLETED: [],
-  CANCELLED: [],
-};
+/**
+ * Orders — list page for all customer orders.
+ * Shows loading spinner, empty state, error banner, or order table.
+ * 3-dot action menu uses absolute positioning inside each row.
+ */
 
-const STATUS_COLORS = {
-  PENDING: "text-gray-600",
-  IN_PRODUCTION: "text-amber-600",
-  READY_FOR_COLLECTION: "text-blue-600",
-  COMPLETED: "text-emerald-600",
-  CANCELLED: "text-red-600",
-};
+// Column definitions for Excel/PDF export
+const ORDER_COLUMNS = [
+  { header: "Order #", key: "orderNumber" },
+  { header: "Customer", key: "customerName" },
+  { header: "Status", key: "orderStatus" },
+  { header: "Total", key: "totalAmount" },
+  { header: "Paid", key: "paidAmount" },
+  { header: "Balance", key: "balance" },
+  { header: "Date", key: "createdAt" },
+  { header: "Created By", key: "createdBy" },
+];
 
 export default function Orders() {
   const navigate = useNavigate();
   const { data: orders, isLoading, isError, error } = useGetAllOrders();
   const { mutate: updateOrderStatus } = useUpdateOrderStatus();
+
+  // openMenu: orderId of the currently open dropdown (null = closed)
   const [openMenu, setOpenMenu] = useState(null);
-  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
-  const menuRef = useRef(null);
-  const btnRefs = useRef({});
 
-  const handleOpenMenu = (orderId) => {
-    if (openMenu === orderId) {
-      setOpenMenu(null);
-      return;
-    }
-    const btn = btnRefs.current[orderId];
-    if (btn) {
-      const rect = btn.getBoundingClientRect();
-      setMenuPos({ top: rect.bottom + 4, left: rect.right - 224 }); // matches w-56
-    }
-    setOpenMenu(orderId);
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setOpenMenu(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // Sort orders by createdAt descending (most recent first)
+  const sortedOrders = useMemo(() => {
+    if (!orders) return [];
+    return [...orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [orders]);
 
   const handleStatusChange = (orderId, newStatus) => {
     updateOrderStatus({ orderId, status: newStatus });
@@ -67,7 +45,7 @@ export default function Orders() {
 
   return (
     <div className="animate-fade-in mx-auto max-w-7xl">
-      {/* Page header */}
+      {/* ── Page Header ─── */}
       <div className="mb-32 flex flex-col gap-16 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-h2 font-bold text-text-primary">Orders</h1>
@@ -75,23 +53,43 @@ export default function Orders() {
             Manage customer orders
           </p>
         </div>
-        <Link
-          to="/orders/create-order"
-          className="inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-14 py-8 text-sm font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed press-scale transition-all duration-200"
-        >
-          <Plus className="h-16 w-16" />
-          Create Order
-        </Link>
+        <div className="flex items-center gap-8">
+          {sortedOrders.length > 0 && (
+            <>
+              <button
+                onClick={() => exportToExcel(sortedOrders, ORDER_COLUMNS, "orders")}
+                className="inline-flex items-center justify-center gap-8 rounded-input border border-border-default bg-surface-default px-14 py-8 text-sm font-medium text-text-secondary hover:bg-surface-muted transition-all duration-200 press-scale"
+              >
+                <FileSpreadsheet className="h-16 w-16" />
+                Excel
+              </button>
+              <button
+                onClick={() => exportToPDF(sortedOrders, ORDER_COLUMNS, "Orders", "orders")}
+                className="inline-flex items-center justify-center gap-8 rounded-input border border-border-default bg-surface-default px-14 py-8 text-sm font-medium text-text-secondary hover:bg-surface-muted transition-all duration-200 press-scale"
+              >
+                <FileText className="h-16 w-16" />
+                PDF
+              </button>
+            </>
+          )}
+          <Link
+            to="/orders/create-order"
+            className="inline-flex items-center justify-center gap-8 rounded-input bg-brand-primary px-14 py-8 text-sm font-semibold text-neutral-0 shadow-elevation-1 hover:bg-brand-hover hover:shadow-elevation-2 active:bg-brand-pressed press-scale transition-all duration-200"
+          >
+            <Plus className="h-16 w-16" />
+            Create Order
+          </Link>
+        </div>
       </div>
 
-      {/* Error */}
+      {/* ── Error Banner ─── */}
       {isError && (
         <div className="mb-20 rounded-input border border-danger-main bg-danger-bg px-16 py-12 text-body-normal text-danger-main animate-fade-in">
           {error.response?.data?.message || "Failed to load orders. Please try again."}
         </div>
       )}
 
-      {/* Loading */}
+      {/* ── Loading State ─── */}
       {isLoading && (
         <div className="flex min-h-[400px] flex-col items-center justify-center gap-16 rounded-card bg-surface-default shadow-elevation-1 animate-fade-in">
           <Loader2 className="h-32 w-32 animate-spin text-brand-primary" />
@@ -99,8 +97,8 @@ export default function Orders() {
         </div>
       )}
 
-      {/* Empty */}
-      {!isLoading && !isError && orders && orders.length === 0 && (
+      {/* ── Empty State ─── */}
+      {!isLoading && !isError && sortedOrders.length === 0 && (
         <div className="flex min-h-[400px] flex-col items-center justify-center rounded-card bg-surface-default p-32 shadow-elevation-1 text-center animate-fade-in">
           <div className="mb-16 flex h-64 w-64 items-center justify-center rounded-full bg-brand-tint">
             <ClipboardList className="h-32 w-32 text-brand-primary" />
@@ -112,9 +110,9 @@ export default function Orders() {
         </div>
       )}
 
-      {/* Orders table */}
-      {!isLoading && orders && orders.length > 0 && (
-        <div className="w-full rounded-card bg-surface-default overflow-visible">
+      {/* ── Orders Table ─── */}
+      {!isLoading && sortedOrders.length > 0 && (
+        <div className="w-full rounded-card bg-surface-default">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border-default">
@@ -130,8 +128,7 @@ export default function Orders() {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order, index) => {
-                const transitions = STATUS_TRANSITIONS[order.orderStatus] || [];
+              {sortedOrders.map((order, index) => {
                 return (
                   <tr
                     key={order.orderId}
@@ -157,17 +154,21 @@ export default function Orders() {
                       ${order.balance?.toLocaleString()}
                     </td>
                     <td className="w-36 px-6 py-4 text-xs text-text-muted whitespace-nowrap">
-                      {new Date(order.createdAt).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {formatDate(order.createdAt)}
                     </td>
                     <td className="min-w-[120px] px-6 py-4 text-xs text-text-muted whitespace-nowrap truncate" title={order.createdBy || ""}>
                       {order.createdBy || "-"}
                     </td>
                     <td className="w-20 px-6 py-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-4">
+                      <div
+                        className="relative flex items-center justify-end gap-4"
+                        tabIndex={-1}
+                        onBlur={(e) => {
+                          if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) {
+                            setOpenMenu(null);
+                          }
+                        }}
+                      >
                         <button
                           onClick={() => navigate(`/orders/${order.orderId}`)}
                           className="rounded-full p-5 text-text-muted hover:bg-brand-subtle hover:text-brand-primary transition-all duration-200 press-scale"
@@ -176,13 +177,45 @@ export default function Orders() {
                           <Eye className="w-5 h-5" />
                         </button>
                         <button
-                          ref={(el) => { btnRefs.current[order.orderId] = el; }}
-                          onClick={() => handleOpenMenu(order.orderId)}
+                          onClick={() => setOpenMenu(openMenu === order.orderId ? null : order.orderId)}
                           className="rounded-full p-5 text-text-muted hover:bg-surface-muted hover:text-text-primary transition-all duration-200 press-scale"
                           aria-label="Actions"
                         >
                           <MoreVertical className="w-5 h-5" />
                         </button>
+
+                        {/* Dropdown — absolute inside the relative container */}
+                        {openMenu === order.orderId && (
+                          <div className="absolute right-0 top-full mt-2 z-10 w-56 whitespace-nowrap rounded-input border border-border-default bg-surface-default py-4 shadow-elevation-2 animate-scale-in">
+                            {(() => {
+                              const transitions = STATUS_TRANSITIONS[order.orderStatus] || [];
+                              if (transitions.length === 0) {
+                                return <p className="px-16 py-8 text-body-small leading-none text-text-muted">No actions available</p>;
+                              }
+                              return transitions.map((t, i) => (
+                                <Fragment key={t.status}>
+                                  {t.status === "CANCELLED" && i > 0 && (
+                                    <div className="my-2 border-t border-border-default" />
+                                  )}
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      handleStatusChange(order.orderId, t.status);
+                                    }}
+                                    className={`flex w-full items-center gap-8 px-16 py-8 text-left text-body-small leading-none transition-colors ${
+                                      t.status === "CANCELLED"
+                                        ? "text-danger-main hover:bg-danger-bg"
+                                        : "text-text-primary hover:bg-surface-muted"
+                                    }`}
+                                  >
+                                    {t.label}
+                                  </button>
+                                </Fragment>
+                              ));
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -190,39 +223,6 @@ export default function Orders() {
               })}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* Dropdown rendered via portal-style fixed positioning */}
-      {openMenu && (
-        <div
-          ref={menuRef}
-          className="fixed z-[9999] w-56 whitespace-nowrap rounded-input border border-border-default bg-surface-default py-4 shadow-elevation-2 animate-fade-in"
-          style={{ top: menuPos.top, left: menuPos.left }}
-        >
-          {(() => {
-            const transitions = STATUS_TRANSITIONS[orders?.find(o => o.orderId === openMenu)?.orderStatus] || [];
-            if (transitions.length === 0) {
-              return <p className="px-16 py-8 text-body-small leading-none text-text-muted">No actions available</p>;
-            }
-            return transitions.map((t, i) => (
-              <Fragment key={t.status}>
-                {t.status === "CANCELLED" && i > 0 && (
-                  <div className="my-2 border-t border-border-default" />
-                )}
-                <button
-                  onClick={() => handleStatusChange(openMenu, t.status)}
-                  className={`flex w-full items-center gap-8 px-16 py-8 text-left text-body-small leading-none transition-colors ${
-                    t.status === "CANCELLED"
-                      ? "text-danger-main hover:bg-danger-bg"
-                      : "text-text-primary hover:bg-surface-muted"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              </Fragment>
-            ));
-          })()}
         </div>
       )}
     </div>

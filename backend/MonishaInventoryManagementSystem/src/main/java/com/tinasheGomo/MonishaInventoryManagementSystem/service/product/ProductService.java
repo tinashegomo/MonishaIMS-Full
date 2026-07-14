@@ -3,12 +3,17 @@ package com.tinasheGomo.MonishaInventoryManagementSystem.service.product;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.product.request.ProductRequestDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.product.request.ProductSizeRequestDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.product.response.ProductResponseDTO;
+import com.tinasheGomo.MonishaInventoryManagementSystem.dto.shared.SizeQuantityDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.entity.product.ProductEntity;
+import com.tinasheGomo.MonishaInventoryManagementSystem.entity.product.ProductDepletedHistoryEntity;
+import com.tinasheGomo.MonishaInventoryManagementSystem.entity.product.ProductRestockHistoryEntity;
 import com.tinasheGomo.MonishaInventoryManagementSystem.entity.school.SchoolEntity;
 import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.WarehouseBatchEntity;
 import com.tinasheGomo.MonishaInventoryManagementSystem.exception.exceptions.NotFoundException;
 import com.tinasheGomo.MonishaInventoryManagementSystem.mapper.product.ProductMapper;
 import com.tinasheGomo.MonishaInventoryManagementSystem.repository.product.ProductRepository;
+import com.tinasheGomo.MonishaInventoryManagementSystem.repository.product.ProductRestockHistoryRepository;
+import com.tinasheGomo.MonishaInventoryManagementSystem.repository.product.ProductDepletedHistoryRepository;
 import com.tinasheGomo.MonishaInventoryManagementSystem.repository.school.SchoolRepository;
 import com.tinasheGomo.MonishaInventoryManagementSystem.repository.warehouse.WarehouseBatchRepository;
 import com.tinasheGomo.MonishaInventoryManagementSystem.security.SecurityUtils;
@@ -28,6 +33,8 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+    private final ProductRestockHistoryRepository productRestockHistoryRepository;
+    private final ProductDepletedHistoryRepository productDepletedHistoryRepository;
 
     private final SchoolRepository schoolRepository;
     private final WarehouseBatchRepository batchRepository;
@@ -124,5 +131,57 @@ public class ProductService {
                 .orElseThrow(() -> new NotFoundException("Product not found"));
 
         productRepository.delete(product);
+    }
+
+    @Transactional
+    public ProductResponseDTO restockProduct(UUID productId, List<SizeQuantityDTO> restockItems) {
+
+        ProductEntity product = productRepository.findByProductId(productId)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+
+        WarehouseBatchEntity batch = product.getBatch();
+        String restockedBy = SecurityUtils.getCurrentUser().getUser().getUserName();
+
+        productSizeService.restockProductSizes(product, batch, restockItems, restockedBy);
+
+        // Recalculate batch totals
+        int batchTotalQty = batchSizeService.calculateBatchTotalQuantity(batch);
+        batch.setTotalQuantity(batchTotalQty);
+        batch.setTotalPrice(batchTotalQty * batch.getBatchPrice());
+
+        // Un-deplete batch if stock was restored
+        if (batchTotalQty > 0) {
+            batch.setDepletedAt(null);
+        }
+
+        batchRepository.save(batch);
+
+        // Recalculate product totals
+        entityManager.flush();
+        entityManager.clear();
+
+        ProductEntity updatedProduct = productRepository.findByProductId(productId)
+                .orElseThrow(() -> new NotFoundException("Product not found after restock"));
+
+        int totalQuantity = productSizeService.calculateProductTotalQuantity(updatedProduct);
+        updatedProduct.setTotalQuantity(totalQuantity);
+        updatedProduct.setTotalPrice(totalQuantity * updatedProduct.getProductPrice());
+
+        // Un-deplete product if stock was restored
+        if (totalQuantity > 0) {
+            updatedProduct.setDepletedAt(null);
+        }
+
+        ProductEntity finalProduct = productRepository.save(updatedProduct);
+
+        return productMapper.toResponse(finalProduct);
+    }
+
+    public List<ProductRestockHistoryEntity> getRestockHistory(UUID productId) {
+        return productRestockHistoryRepository.findByProductIdOrderByRestockedAtDesc(productId);
+    }
+
+    public List<ProductDepletedHistoryEntity> getDepletedHistory(UUID productId) {
+        return productDepletedHistoryRepository.findByProductIdOrderByDepletedAtDesc(productId);
     }
 }

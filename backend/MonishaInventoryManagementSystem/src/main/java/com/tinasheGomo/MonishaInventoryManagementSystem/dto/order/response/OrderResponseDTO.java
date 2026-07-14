@@ -29,6 +29,7 @@ public class OrderResponseDTO {
      */
     private UUID customerId;
     private String customerName;
+    private String customerPhone;
 
     /*
         SCHOOL SNAPSHOT (OPTIONAL)

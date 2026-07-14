@@ -2,6 +2,9 @@ package com.tinasheGomo.MonishaInventoryManagementSystem.controller.product;
 
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.product.request.ProductRequestDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.product.response.ProductResponseDTO;
+import com.tinasheGomo.MonishaInventoryManagementSystem.dto.shared.SizeQuantityDTO;
+import com.tinasheGomo.MonishaInventoryManagementSystem.entity.product.ProductRestockHistoryEntity;
+import com.tinasheGomo.MonishaInventoryManagementSystem.entity.product.ProductDepletedHistoryEntity;
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.product.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -38,5 +41,23 @@ public class ProductController {
     @DeleteMapping("/delete-product/{productId}")
     public void deleteProduct(@PathVariable UUID productId) {
         productService.deleteProduct(productId);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PostMapping("/restock-product/{productId}")
+    public ProductResponseDTO restockProduct(
+            @PathVariable UUID productId,
+            @RequestBody @Valid List<SizeQuantityDTO> restockItems) {
+        return productService.restockProduct(productId, restockItems);
+    }
+
+    @GetMapping("/restock-history/{productId}")
+    public List<ProductRestockHistoryEntity> getRestockHistory(@PathVariable UUID productId) {
+        return productService.getRestockHistory(productId);
+    }
+
+    @GetMapping("/depleted-history/{productId}")
+    public List<ProductDepletedHistoryEntity> getDepletedHistory(@PathVariable UUID productId) {
+        return productService.getDepletedHistory(productId);
     }
 }

@@ -1,9 +1,12 @@
 package com.tinasheGomo.MonishaInventoryManagementSystem.controller.warehouse;
 
+import com.tinasheGomo.MonishaInventoryManagementSystem.dto.shared.SizeQuantityDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.warehouse.request.WarehouseBatchRequestDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.warehouse.request.WarehouseBatchSizeRequestDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.warehouse.response.WarehouseBatchResponseDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.warehouse.response.WarehouseBatchSizeResponseDTO;
+import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.RestockHistoryEntity;
+import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.DepletedHistoryEntity;
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.warehouse.WarehouseBatchService;
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.warehouse.WarehouseBatchSizeService;
 import jakarta.validation.Valid;
@@ -50,5 +53,23 @@ public class WarehouseController {
             @PathVariable UUID batchId,
             @RequestBody @Valid List<WarehouseBatchSizeRequestDTO> requestDTOs) {
         return warehouseBatchSizeService.addSizesToBatch(batchId, requestDTOs);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PostMapping("/restock-batch/{batchId}")
+    public WarehouseBatchResponseDTO restockBatch(
+            @PathVariable UUID batchId,
+            @RequestBody @Valid List<SizeQuantityDTO> restockItems) {
+        return warehouseBatchService.restockBatch(batchId, restockItems);
+    }
+
+    @GetMapping("/restock-history/{batchId}")
+    public List<RestockHistoryEntity> getRestockHistory(@PathVariable UUID batchId) {
+        return warehouseBatchService.getRestockHistory(batchId);
+    }
+
+    @GetMapping("/depleted-history/{batchId}")
+    public List<DepletedHistoryEntity> getDepletedHistory(@PathVariable UUID batchId) {
+        return warehouseBatchService.getDepletedHistory(batchId);
     }
 }

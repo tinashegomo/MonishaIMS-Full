@@ -1,23 +1,26 @@
 package com.tinasheGomo.MonishaInventoryManagementSystem.service.warehouse;
 
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.product.response.ProductResponseDTO;
+import com.tinasheGomo.MonishaInventoryManagementSystem.dto.shared.SizeQuantityDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.warehouse.request.WarehouseBatchRequestDTO;
-import com.tinasheGomo.MonishaInventoryManagementSystem.dto.warehouse.request.WarehouseBatchSizeRequestDTO;
 import com.tinasheGomo.MonishaInventoryManagementSystem.dto.warehouse.response.WarehouseBatchResponseDTO;
-import com.tinasheGomo.MonishaInventoryManagementSystem.entity.product.ProductEntity;
 import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.WarehouseBatchEntity;
-import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.WarehouseBatchSizeEntity;
+import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.RestockHistoryEntity;
+import com.tinasheGomo.MonishaInventoryManagementSystem.entity.warehouse.DepletedHistoryEntity;
 import com.tinasheGomo.MonishaInventoryManagementSystem.exception.exceptions.DuplicateException;
 import com.tinasheGomo.MonishaInventoryManagementSystem.exception.exceptions.NotFoundException;
 import com.tinasheGomo.MonishaInventoryManagementSystem.mapper.product.ProductMapper;
 import com.tinasheGomo.MonishaInventoryManagementSystem.mapper.warehouse.WarehouseBatchMapper;
 import com.tinasheGomo.MonishaInventoryManagementSystem.repository.warehouse.WarehouseBatchRepository;
+import com.tinasheGomo.MonishaInventoryManagementSystem.repository.warehouse.RestockHistoryRepository;
+import com.tinasheGomo.MonishaInventoryManagementSystem.repository.warehouse.DepletedHistoryRepository;
 import com.tinasheGomo.MonishaInventoryManagementSystem.security.SecurityUtils;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +32,8 @@ public class WarehouseBatchService {
     private final WarehouseBatchRepository batchRepository;
     private final WarehouseBatchMapper batchMapper;
     private final WarehouseBatchSizeService batchSizeService;
+    private final RestockHistoryRepository restockHistoryRepository;
+    private final DepletedHistoryRepository depletedHistoryRepository;
     private final ProductMapper productMapper;
     private final EntityManager entityManager;
 
@@ -164,5 +169,51 @@ public class WarehouseBatchService {
                 .orElseThrow(() -> new NotFoundException("Batch not found"));
 
         batchRepository.delete(batch);
+    }
+
+    @Transactional
+    public WarehouseBatchResponseDTO restockBatch(UUID batchId, List<SizeQuantityDTO> restockItems) {
+
+        WarehouseBatchEntity batch = batchRepository.findByBatchId(batchId)
+                .orElseThrow(() -> new NotFoundException("Batch not found"));
+
+        String restockedBy = SecurityUtils.getCurrentUser().getUser().getUserName();
+
+        batchSizeService.restockBatchSizes(batch, restockItems, restockedBy);
+
+        // Recalculate totals
+        entityManager.flush();
+        entityManager.clear();
+
+        WarehouseBatchEntity updatedBatch = batchRepository.findByBatchId(batchId)
+                .orElseThrow(() -> new NotFoundException("Batch not found after restock"));
+
+        int totalQuantity = batchSizeService.calculateBatchTotalQuantity(updatedBatch);
+        updatedBatch.setTotalQuantity(totalQuantity);
+        updatedBatch.setTotalPrice(totalQuantity * updatedBatch.getBatchPrice());
+
+        // Update depleted status — restocking can revive a depleted batch
+        if (totalQuantity > 0) {
+            updatedBatch.setDepletedAt(null);
+        }
+
+        WarehouseBatchEntity finalBatch = batchRepository.save(updatedBatch);
+
+        WarehouseBatchResponseDTO response = batchMapper.toResponse(finalBatch);
+        response.setCreatedBy(finalBatch.getCreatedBy());
+
+        if (finalBatch.getProducts() != null && !finalBatch.getProducts().isEmpty()) {
+            response.setProducts(productMapper.toResponseList(finalBatch.getProducts()));
+        }
+
+        return response;
+    }
+
+    public List<RestockHistoryEntity> getRestockHistory(UUID batchId) {
+        return restockHistoryRepository.findByBatchIdOrderByRestockedAtDesc(batchId);
+    }
+
+    public List<DepletedHistoryEntity> getDepletedHistory(UUID batchId) {
+        return depletedHistoryRepository.findByBatchIdOrderByDepletedAtDesc(batchId);
     }
 }

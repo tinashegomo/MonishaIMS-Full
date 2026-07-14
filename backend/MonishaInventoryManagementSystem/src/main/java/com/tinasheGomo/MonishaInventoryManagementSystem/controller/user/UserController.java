@@ -8,7 +8,6 @@ import com.tinasheGomo.MonishaInventoryManagementSystem.security.SecurityUtils;
 import com.tinasheGomo.MonishaInventoryManagementSystem.service.user.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,78 +22,56 @@ public class UserController {
 
     // GET /api/monishaInventory/user/get-current-user
     @GetMapping("/get-current-user")
-    public ResponseEntity<UserResponseDTO> getCurrentLoggedInUser() {
-        UserResponseDTO response = userService.getCurrentLoggedInUser();
-        return ResponseEntity.ok(response);
+    public UserResponseDTO getCurrentLoggedInUser() {
+        return userService.getCurrentLoggedInUser();
     }
 
     // GET /api/monishaInventory/user/get-current-user-role
     @GetMapping("/get-current-user-role")
-    public ResponseEntity<UserRole> getCurrentLoggedInUserRole() {
-        UserRole response = userService.getCurrentLoggedInUserRole();
-        return ResponseEntity.ok(response);
+    public UserRole getCurrentLoggedInUserRole() {
+return userService.getCurrentLoggedInUserRole();
     }
 
     // GET /api/monishaInventory/user/get-all-users
     @GetMapping("/get-all-users")
-    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
-        List<UserResponseDTO> response = userService.getAllUsers();
-        return ResponseEntity.ok(response);
+    public List<UserResponseDTO> getAllUsers() {
+        return userService.getAllUsers();
     }
 
     // GET /api/monishaInventory/user/get-user-byId/{id}
     @GetMapping("/get-user-byId/{id}")
-    public ResponseEntity<UserResponseDTO> getUserById(
-            @PathVariable UUID id) {
-        UserResponseDTO response = userService.getUserById(id);
-        return ResponseEntity.ok(response);
+    public UserResponseDTO getUserById(@PathVariable UUID id) {
+        return userService.getUserById(id);
     }
 
     // DELETE /api/monishaInventory/user/delete-user/{id}
     @DeleteMapping("/delete-user/{id}")
-    public ResponseEntity<Void> deleteUserById(
-            @PathVariable UUID id) {
+    public void deleteUserById(@PathVariable UUID id) {
         userService.deleteUserById(id);
-        return ResponseEntity.noContent().build();
     }
 
-    // PUT /api/monishaInventory/user/update-user-role/{userId}
-    @PutMapping("/update-user-role/{userId}")
-    public ResponseEntity<UserResponseDTO> updateUserRole(
-            @PathVariable UUID userId,
-            @RequestParam UserRole userRole) {
-        UserResponseDTO response = userService.updateUserRole(userId, userRole);
-        return ResponseEntity.ok(response);
+    // PATCH /api/monishaInventory/user/update-user-role/{userId}
+    @PatchMapping("/update-user-role/{userId}")
+    public UserResponseDTO updateUserRole(@PathVariable UUID userId, @RequestParam UserRole userRole) {
+        return userService.updateUserRole(userId, userRole);
     }
 
     // PATCH /api/monishaInventory/user/change-password
     @PatchMapping("/change-password")
-    public ResponseEntity<Void> changePassword(
-            @RequestParam String newPassword) {
+    public void changePassword(@RequestParam String newPassword) {
         UUID userId = SecurityUtils.getCurrentUser().getUser().getUserId();
         userService.changePassword(userId, newPassword);
-        return ResponseEntity.ok().build();
     }
 
     // PATCH /api/monishaInventory/user/update-user/{id}
     @PatchMapping("/update-user/{id}")
-    public ResponseEntity<UserResponseDTO> updateUser(
-            @PathVariable UUID id,
-            @Valid @RequestBody UserRequestDTO requestDTO) {
-        UserResponseDTO response = userService.updateUser(
-                id,
-                requestDTO.getUserName(),
-                requestDTO.getUserEmail(),
-                requestDTO.getUserPhoneNumber()
-        );
-        return ResponseEntity.ok(response);
+    public UserResponseDTO updateUser(@PathVariable UUID id, @Valid @RequestBody UserRequestDTO requestDTO) {
+        return userService.updateUser(id, requestDTO.getUserName(), requestDTO.getUserEmail(), requestDTO.getUserPhoneNumber());
     }
 
     // GET /api/monishaInventory/user/get-user-activity/{id}
     @GetMapping("/get-user-activity/{id}")
-    public ResponseEntity<UserActivityDTO> getUserActivity(
-            @PathVariable UUID id) {
-        UserActivityDTO response = userService.getUserActivity(id);
-        return ResponseEntity.ok(response);
+    public UserActivityDTO getUserActivity(@PathVariable UUID id) {
+        return userService.getUserActivity(id);
     }
 }

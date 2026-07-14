@@ -56,6 +56,8 @@ public class WarehouseBatchEntity {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    private LocalDateTime depletedAt;
+
     @PrePersist
     public void onCreate() {
         this.createdAt = LocalDateTime.now();

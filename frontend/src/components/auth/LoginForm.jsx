@@ -8,8 +8,10 @@ import {
 } from "@/yupSchema/auth/AuthRequestDTO";
 
 export const LoginForm = ({ handleLogin, isPending }) => {
+  // ─── State ────────────────────────────────────────────────────
   const [showPassword, setShowPassword] = useState(false);
 
+  // ─── Form Setup ───────────────────────────────────────────────
   const {
     register,
     handleSubmit,
@@ -20,6 +22,7 @@ export const LoginForm = ({ handleLogin, isPending }) => {
     mode: "onBlur",
   });
 
+  // ─── Computed Styles ─────────────────────────────────────────
   const inputBase =
     "w-full rounded-input border bg-surface-elevated px-16 py-12 text-body-normal text-text-primary placeholder:text-text-muted outline-none transition-all duration-200";
   const inputOk =
@@ -27,8 +30,10 @@ export const LoginForm = ({ handleLogin, isPending }) => {
   const inputErr =
     "border-danger-main focus:border-danger-main focus:ring-2 focus:ring-danger-main/20";
 
+  // ─── Render ───────────────────────────────────────────────────
   return (
     <form onSubmit={handleSubmit(handleLogin)} className="space-y-20">
+      {/* ── Email ─────────────────────────────────────────────────── */}
       <div>
         <label className="mb-8 block text-ui-label font-semibold text-text-secondary">
           Email
@@ -48,6 +53,7 @@ export const LoginForm = ({ handleLogin, isPending }) => {
         )}
       </div>
 
+      {/* ── Password ──────────────────────────────────────────────── */}
       <div>
         <label className="mb-8 block text-ui-label font-semibold text-text-secondary">
           Password
@@ -81,6 +87,7 @@ export const LoginForm = ({ handleLogin, isPending }) => {
         )}
       </div>
 
+      {/* ── Submit Button ─────────────────────────────────────────── */}
       <button
         type="submit"
         disabled={isPending}
@@ -96,6 +103,7 @@ export const LoginForm = ({ handleLogin, isPending }) => {
         )}
       </button>
 
+      {/* ── Forgot Password Link ──────────────────────────────────── */}
       <p className="text-center text-body-small text-text-muted">
         <a href="/forgot-password" className="font-medium text-brand-primary hover:text-brand-hover transition-colors">
           Forgot password?

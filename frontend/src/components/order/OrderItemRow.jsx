@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { Trash2, Plus } from "lucide-react";
 
+// ─── Styles ───────────────────────────────────────────────────
+
 const inputBase =
   "w-full rounded-input border bg-surface-elevated px-16 py-12 text-body-normal text-text-primary placeholder:text-text-muted outline-none transition-all duration-200";
 const inputOk =
@@ -15,8 +17,12 @@ const inputOk =
  *
  * Receives all data and callbacks via props from OrderItemList.
  */
+
+// ─── Component ────────────────────────────────────────────────
+
 export default function OrderItemRow({ item, index, existingProducts, existingBatches, onManageItem, onManageMeasurement }) {
 
+  // ─── Hooks ────────────────────────────────────────────────────
   const availableSizes = useMemo(() => {
     if (item.source === "product" && item.productId) {
       return existingProducts.find((p) => p.productId === item.productId)?.productSizes ?? [];
@@ -27,10 +33,11 @@ export default function OrderItemRow({ item, index, existingProducts, existingBa
     return [];
   }, [item.source, item.productId, item.batchId, existingProducts, existingBatches]);
 
+  // ─── Render ───────────────────────────────────────────────────
   return (
     <div className="rounded-input border border-border-default bg-surface-elevated/30 p-16 space-y-12 animate-slide-up">
 
-      {/* Item header: source selector + remove */}
+      {/* ── Source Selector ─── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           {["product", "batch", "custom"].map((src) => (
@@ -58,7 +65,7 @@ export default function OrderItemRow({ item, index, existingProducts, existingBa
         </button>
       </div>
 
-      {/* Product fields */}
+      {/* ── Product Fields ─── */}
       {item.source === "product" && (
         <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
           <div>
@@ -105,7 +112,7 @@ export default function OrderItemRow({ item, index, existingProducts, existingBa
         </div>
       )}
 
-      {/* Batch fields */}
+      {/* ── Batch Fields ─── */}
       {item.source === "batch" && (
         <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
           <div>
@@ -152,7 +159,7 @@ export default function OrderItemRow({ item, index, existingProducts, existingBa
         </div>
       )}
 
-      {/* Custom fields */}
+      {/* ── Custom Fields ─── */}
       {item.source === "custom" && (
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
           <div>
@@ -209,7 +216,7 @@ export default function OrderItemRow({ item, index, existingProducts, existingBa
         </div>
       )}
 
-      {/* Measurements (custom items only) */}
+      {/* ── Measurements ─── */}
       {item.source === "custom" && (
         <div className="rounded-input border border-border-default bg-surface-elevated/30 p-16 space-y-10">
           <label className="flex items-center gap-8 cursor-pointer">
@@ -279,7 +286,7 @@ export default function OrderItemRow({ item, index, existingProducts, existingBa
         </div>
       )}
 
-      {/* Item subtotal */}
+      {/* ── Subtotal ─── */}
       <div className="text-right text-body-small text-text-muted pt-4">
         Subtotal:{" "}
         <span className="font-medium text-text-primary">
